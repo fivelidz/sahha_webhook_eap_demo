@@ -170,8 +170,17 @@ export function formatWebhookProfile(webhookData: any, index: number): any {
     originalProfileId: webhookData.profileId,
     originalExternalId: webhookData.externalId,
     
-    deviceType: webhookData.deviceType || 'Unknown',
-    demographics: webhookData.demographics || {},
+    // Device information
+    deviceType: webhookData.device?.source || webhookData.deviceType || 'Unknown',
+    deviceSource: webhookData.device?.type || null,
+    deviceLastSeen: webhookData.device?.lastSeen || null,
+    
+    // Demographics information
+    demographics: webhookData.demographics || {
+      age: null,
+      gender: null,
+      location: null
+    },
     
     // Scores
     wellbeingScore: webhookData.scores?.wellbeing?.value || null,
@@ -200,6 +209,14 @@ export function formatWebhookProfile(webhookData: any, index: number): any {
     
     // Archetypes
     archetypes: formatArchetypes(webhookData.archetypes || {}),
+    
+    // Biomarkers summary
+    biomarkers: formatBiomarkers(webhookData.biomarkers || {}),
+    biomarkerCount: webhookData.biomarkers ? Object.keys(webhookData.biomarkers).length : 0,
+    
+    // Data logs summary
+    dataLogs: webhookData.dataLogs || {},
+    dataLogCount: webhookData.dataLogs ? Object.keys(webhookData.dataLogs).length : 0,
     
     // Metadata
     lastDataSync: webhookData.lastUpdated || new Date().toISOString(),
@@ -236,4 +253,52 @@ function formatArchetypes(archetypes: any): string[] {
   }
   
   return formatted;
+}
+
+function formatBiomarkers(biomarkers: any): any[] {
+  const formatted: any[] = [];
+  
+  if (biomarkers) {
+    Object.entries(biomarkers).forEach(([key, data]: [string, any]) => {
+      formatted.push({
+        key,
+        category: data.category,
+        type: data.type,
+        value: data.value,
+        unit: data.unit,
+        displayValue: formatBiomarkerValue(data.value, data.unit),
+        periodicity: data.periodicity,
+        aggregation: data.aggregation
+      });
+    });
+  }
+  
+  return formatted.slice(0, 10); // Limit to 10 most important biomarkers
+}
+
+function formatBiomarkerValue(value: any, unit: string): string {
+  if (unit === 'hour' || unit === 'hours') {
+    const hours = parseFloat(value);
+    return `${hours.toFixed(1)}h`;
+  }
+  if (unit === 'minute' || unit === 'minutes') {
+    const minutes = parseFloat(value);
+    if (minutes >= 60) {
+      return `${(minutes / 60).toFixed(1)}h`;
+    }
+    return `${Math.round(minutes)}m`;
+  }
+  if (unit === 'datetime') {
+    return new Date(value).toLocaleTimeString();
+  }
+  if (unit === 'percentage' || unit === '%') {
+    return `${(parseFloat(value) * 100).toFixed(0)}%`;
+  }
+  if (unit === 'bpm') {
+    return `${Math.round(parseFloat(value))} bpm`;
+  }
+  if (typeof value === 'number') {
+    return `${value.toFixed(2)} ${unit}`;
+  }
+  return `${value} ${unit}`;
 }

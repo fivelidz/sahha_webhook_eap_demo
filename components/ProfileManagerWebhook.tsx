@@ -35,6 +35,7 @@ import {
   Alert,
   InputAdornment,
 } from '@mui/material';
+import InfoIcon from '@mui/icons-material/Info';
 import {
   People as PeopleIcon,
   Search as SearchIcon,
@@ -549,11 +550,13 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
                 <TableCell>Profile ID</TableCell>
                 <TableCell>Department</TableCell>
                 <TableCell>Device</TableCell>
+                <TableCell>Age/Gender</TableCell>
                 <TableCell align="center">Wellbeing</TableCell>
                 <TableCell align="center">Activity</TableCell>
                 <TableCell align="center">Sleep</TableCell>
                 <TableCell align="center">Mental Wellbeing</TableCell>
                 <TableCell align="center">Readiness</TableCell>
+                <TableCell align="center">Biomarkers</TableCell>
                 <TableCell>Archetypes</TableCell>
               </TableRow>
             </TableHead>
@@ -625,7 +628,29 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Chip label={profile.deviceType} size="small" variant="outlined" />
+                      <Chip 
+                        label={profile.deviceType || 'Unknown'} 
+                        size="small" 
+                        variant="outlined" 
+                        color={profile.deviceType === 'Unknown' ? 'default' : 'primary'}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={0.5}>
+                        {profile.demographics?.age && (
+                          <Chip label={`${profile.demographics.age}y`} size="small" />
+                        )}
+                        {profile.demographics?.gender && (
+                          <Chip 
+                            label={profile.demographics.gender} 
+                            size="small" 
+                            color={profile.demographics.gender === 'Male' ? 'info' : 'secondary'}
+                          />
+                        )}
+                        {!profile.demographics?.age && !profile.demographics?.gender && (
+                          <Typography variant="caption" color="text.secondary">N/A</Typography>
+                        )}
+                      </Stack>
                     </TableCell>
                     <TableCell align="center">
                       <Chip
@@ -662,6 +687,30 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
                         color={getScoreColor(profile.readinessScore)}
                       />
                     </TableCell>
+                    <TableCell align="center">
+                      {profile.biomarkerCount > 0 ? (
+                        <Stack direction="row" spacing={0.5} justifyContent="center">
+                          <Chip
+                            label={`${profile.biomarkerCount}`}
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            title={`${profile.biomarkerCount} biomarker types`}
+                          />
+                          {profile.dataLogCount > 0 && (
+                            <Chip
+                              label={`${profile.dataLogCount}`}
+                              size="small"
+                              variant="outlined"
+                              color="success"
+                              title={`${profile.dataLogCount} data logs`}
+                            />
+                          )}
+                        </Stack>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">-</Typography>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={0.5} flexWrap="wrap">
                         {profile.archetypes?.slice(0, 2).map((arch: string, idx: number) => (
@@ -678,7 +727,7 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
                   
                   {/* Expanded Row with Factors */}
                   <TableRow>
-                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={11}>
+                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={12}>
                       <Collapse in={expandedRows.includes(profile.profileId)} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 2 }}>
                           <Typography variant="h6" gutterBottom>

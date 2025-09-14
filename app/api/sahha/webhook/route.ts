@@ -457,16 +457,6 @@ export async function DELETE(request: NextRequest) {
 }
 
 // Helper function to log webhook activity
-async function logWebhookActivity(entry: any) {
-  const logFile = path.join(process.cwd(), 'data', 'webhook-activity.log');
-  try {
-    await ensureDataDirectory();
-    const logLine = JSON.stringify(entry) + '\n';
-    await fs.appendFile(logFile, logLine);
-  } catch (error) {
-    console.error('Failed to log webhook activity:', error);
-  }
-}
 
 // Helper function to verify webhook signature
 function verifyWebhookSignature(signature: string, payload: string, secret: string): boolean {

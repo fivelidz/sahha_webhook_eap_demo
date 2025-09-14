@@ -289,6 +289,9 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
               />
               <Typography variant="body2" color="text.secondary">
                 {profiles.length} profiles • Last updated: {lastRefresh?.toLocaleTimeString() || 'Never'}
+                {webhookStatus === 'connected' && debugInfo.scoresCoverage < 30 && (
+                  <> • Note: Sahha currently only provides sleep data</>
+                )}
               </Typography>
             </Stack>
           </Stack>

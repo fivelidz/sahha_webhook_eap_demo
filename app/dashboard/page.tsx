@@ -5,6 +5,8 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import DashboardLayout from '@/components/DashboardLayout';
 import ProfileManagerWebhook from '@/components/ProfileManagerWebhook';
+import ExecutiveDashboard from '@/components/ExecutiveDashboard';
+import BehavioralIntelligenceEnhanced from '@/components/BehavioralIntelligenceEnhanced';
 import { SahhaDataProvider } from '@/contexts/SahhaDataContext';
 import { Box, Typography } from '@mui/material';
 
@@ -53,19 +55,9 @@ export default function DashboardPage() {
       case 'profile-manager':
         return <ProfileManagerWebhook darkMode={darkMode} />;
       case 'executive':
-        return (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h4">Executive Dashboard</Typography>
-            <Typography>Coming soon...</Typography>
-          </Box>
-        );
+        return <ExecutiveDashboard orgId="default" />;
       case 'behavioral':
-        return (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h4">Behavioral Intelligence</Typography>
-            <Typography>Coming soon...</Typography>
-          </Box>
-        );
+        return <BehavioralIntelligenceEnhanced orgId="default" />;
       case 'department':
         return (
           <Box sx={{ p: 3 }}>

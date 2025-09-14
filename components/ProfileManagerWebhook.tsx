@@ -84,6 +84,7 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
   const [webhookStatus, setWebhookStatus] = useState<'connected' | 'disconnected' | 'demo'>('disconnected');
   const [sortBy, setSortBy] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [bulkDepartment, setBulkDepartment] = useState('unassigned');
 
   const departments = ['unassigned', 'tech', 'operations', 'sales', 'admin', 'hr', 'finance'];
 
@@ -201,6 +202,34 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
     page * rowsPerPage + rowsPerPage
   );
 
+  // Check if all visible profiles are selected
+  const isAllPageSelected = paginatedProfiles.length > 0 && 
+    paginatedProfiles.every(p => selectedProfiles.includes(p.profileId));
+
+  // Handle select all on current page
+  const handleSelectAllPage = () => {
+    if (isAllPageSelected) {
+      // Deselect all on current page
+      setSelectedProfiles(selectedProfiles.filter(
+        id => !paginatedProfiles.find(p => p.profileId === id)
+      ));
+    } else {
+      // Select all on current page
+      const pageIds = paginatedProfiles.map(p => p.profileId);
+      setSelectedProfiles([...new Set([...selectedProfiles, ...pageIds])]);
+    }
+  };
+
+  // Handle bulk assignment
+  const handleBulkAssign = () => {
+    const newAssignments = { ...assignments };
+    selectedProfiles.forEach(profileId => {
+      newAssignments[profileId] = bulkDepartment;
+    });
+    setAssignments(newAssignments);
+    setSelectedProfiles([]);
+  };
+
   // Get score color
   const getScoreColor = (score: number | null): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     if (score === null) return 'default';
@@ -306,6 +335,54 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
           </Stack>
         </Grid>
       </Grid>
+
+      {/* Bulk Actions Bar */}
+      {selectedProfiles.length > 0 && (
+        <Paper elevation={2} sx={{ p: 2, mb: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item>
+              <Typography variant="body1">
+                {selectedProfiles.length} profile{selectedProfiles.length !== 1 ? 's' : ''} selected
+              </Typography>
+            </Grid>
+            <Grid item xs>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel sx={{ color: 'inherit' }}>Bulk Assign</InputLabel>
+                  <Select
+                    value={bulkDepartment}
+                    onChange={(e) => setBulkDepartment(e.target.value)}
+                    label="Bulk Assign"
+                    sx={{ bgcolor: 'background.paper' }}
+                  >
+                    {departments.map(dept => (
+                      <MenuItem key={dept} value={dept}>
+                        {dept.charAt(0).toUpperCase() + dept.slice(1)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleBulkAssign}
+                  sx={{ bgcolor: 'primary.dark' }}
+                >
+                  Apply
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setSelectedProfiles([])}
+                  sx={{ borderColor: 'primary.contrastText', color: 'primary.contrastText' }}
+                >
+                  Clear Selection
+                </Button>
+              </Stack>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
 
       {/* Debug Panel */}
       <Collapse in={showDebug}>
@@ -458,6 +535,13 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    indeterminate={selectedProfiles.length > 0 && !isAllPageSelected}
+                    checked={isAllPageSelected}
+                    onChange={handleSelectAllPage}
+                  />
+                </TableCell>
                 <TableCell />
                 <TableCell>Profile ID</TableCell>
                 <TableCell>Department</TableCell>
@@ -473,7 +557,19 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
             <TableBody>
               {paginatedProfiles.map((profile) => (
                 <React.Fragment key={profile.profileId}>
-                  <TableRow hover>
+                  <TableRow hover selected={selectedProfiles.includes(profile.profileId)}>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedProfiles.includes(profile.profileId)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedProfiles([...selectedProfiles, profile.profileId]);
+                          } else {
+                            setSelectedProfiles(selectedProfiles.filter(id => id !== profile.profileId));
+                          }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <IconButton
                         size="small"
@@ -579,7 +675,7 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
                   
                   {/* Expanded Row with Factors */}
                   <TableRow>
-                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={10}>
+                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={11}>
                       <Collapse in={expandedRows.includes(profile.profileId)} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 2 }}>
                           <Typography variant="h6" gutterBottom>

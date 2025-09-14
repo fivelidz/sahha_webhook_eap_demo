@@ -119,18 +119,45 @@ interface ArchetypeData {
 // POST endpoint to receive webhook data from Sahha
 export async function POST(request: NextRequest) {
   try {
+    // Get Sahha webhook headers
+    const signature = request.headers.get('X-Signature');
+    const externalId = request.headers.get('X-External-Id');
+    const eventType = request.headers.get('X-Event-Type');
+    
+    // Log received headers for debugging
+    console.log('📨 Webhook headers received:', {
+      hasSignature: !!signature,
+      externalId,
+      eventType
+    });
+    
     // Get raw body for signature verification
     const rawBody = await request.text();
     
-    // Verify webhook signature (if Sahha provides one)
-    const signature = request.headers.get('X-Sahha-Signature') || 
-                     request.headers.get('X-Webhook-Signature');
+    // Verify webhook signature
     const webhookSecret = process.env.SAHHA_WEBHOOK_SECRET;
     
     // In development, allow bypass for testing
     const isDevelopment = process.env.NODE_ENV === 'development';
     const bypassSignature = isDevelopment && request.headers.get('X-Bypass-Signature') === 'test';
     
+    // Check required headers for Sahha webhooks
+    if (!bypassSignature) {
+      if (!signature) {
+        console.error('❌ X-Signature header is missing');
+        return NextResponse.json({ error: 'X-Signature header is missing' }, { status: 400 });
+      }
+      if (!externalId) {
+        console.error('❌ X-External-Id header is missing');
+        return NextResponse.json({ error: 'X-External-Id header is missing' }, { status: 400 });
+      }
+      if (!eventType) {
+        console.error('❌ X-Event-Type header is missing');
+        return NextResponse.json({ error: 'X-Event-Type header is missing' }, { status: 400 });
+      }
+    }
+    
+    // Verify signature if secret is configured
     if (webhookSecret && signature && !bypassSignature) {
       const isValid = verifyWebhookSignature(signature, rawBody, webhookSecret);
       if (!isValid) {
@@ -145,20 +172,26 @@ export async function POST(request: NextRequest) {
     // Parse webhook payload
     const payload: SahhaWebhookPayload = JSON.parse(rawBody);
     
-    // Check if this is a Sahha Integration Event (their actual webhook format)
-    const isIntegrationEvent = !!payload.eventType;
+    // Use event type from header or payload
+    const actualEventType = eventType || payload.eventType;
     let actualPayload = payload;
     
-    // If it's an Integration Event, extract the actual data
-    if (isIntegrationEvent) {
-      console.log('📨 Sahha Integration Event received:', {
-        eventType: payload.eventType,
-        hasData: !!payload.data,
-        timestamp: payload.timestamp
-      });
-      
-      // Extract the actual payload from the data field
-      actualPayload = payload.data || payload;
+    // Log the event type we're processing
+    console.log('📨 Sahha webhook event:', {
+      eventType: actualEventType,
+      externalId: externalId || payload.externalId,
+      hasData: !!payload.data,
+      timestamp: payload.timestamp || new Date().toISOString()
+    });
+    
+    // If payload has a data field, extract it (for Integration Events)
+    if (payload.data) {
+      actualPayload = payload.data;
+    }
+    
+    // Add external ID from header if not in payload
+    if (externalId && !actualPayload.externalId) {
+      actualPayload.externalId = externalId;
     }
     
     // Detect webhook type

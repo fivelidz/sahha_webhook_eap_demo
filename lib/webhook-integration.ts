@@ -13,6 +13,7 @@ interface WebhookProfile {
     activity?: { value: number; state: string; updatedAt: string };
     sleep?: { value: number; state: string; updatedAt: string };
     mentalWellbeing?: { value: number; state: string; updatedAt: string };
+    mental_wellbeing?: { value: number; state: string; updatedAt: string }; // Also support underscore format
     readiness?: { value: number; state: string; updatedAt: string };
   };
   
@@ -35,6 +36,14 @@ interface WebhookProfile {
       unit: string;
     }>;
     mentalWellbeing?: Array<{
+      name: string;
+      value: number;
+      goal?: number;
+      score: number;
+      state: string;
+      unit: string;
+    }>;
+    mental_wellbeing?: Array<{  // Also support underscore format
       name: string;
       value: number;
       goal?: number;
@@ -197,7 +206,10 @@ export function mergeProfileData(apiProfile: any, webhookData?: WebhookProfile):
     merged.wellbeingScore = webhookData.scores.wellbeing?.value ?? apiProfile.wellbeingScore;
     merged.activityScore = webhookData.scores.activity?.value ?? apiProfile.activityScore;
     merged.sleepScore = webhookData.scores.sleep?.value ?? apiProfile.sleepScore;
-    merged.mentalWellbeingScore = webhookData.scores.mentalWellbeing?.value ?? apiProfile.mentalWellbeingScore;
+    // Handle both mental_wellbeing and mentalWellbeing formats
+    merged.mentalWellbeingScore = (webhookData.scores as any).mental_wellbeing?.value ?? 
+                                   (webhookData.scores as any).mentalWellbeing?.value ?? 
+                                   apiProfile.mentalWellbeingScore;
     merged.readinessScore = webhookData.scores.readiness?.value ?? apiProfile.readinessScore;
   }
   
@@ -208,7 +220,7 @@ export function mergeProfileData(apiProfile: any, webhookData?: WebhookProfile):
   merged.subScores = {
     activity: getScoreFactors(webhookData, 'activity'),
     sleep: getScoreFactors(webhookData, 'sleep'),
-    mentalWellbeing: getScoreFactors(webhookData, 'mentalWellbeing'),
+    mentalWellbeing: getScoreFactors(webhookData, 'mental_wellbeing') || getScoreFactors(webhookData, 'mentalWellbeing'),
     readiness: getScoreFactors(webhookData, 'readiness'),
     wellbeing: getScoreFactors(webhookData, 'wellbeing')
   };

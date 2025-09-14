@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+/dist
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env*.local
+.env.development
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data files (local storage)
+/data/
+webhook-data.json
+webhook-config.json
+webhook-activity.log
+sahha-webhook-data.json
+sahha-webhook-backup.json
+
+# Logs
+*.log
+dev-server.log
+tunnel.log
+ngrok.log
+localtunnel.log
+
+# Temporary files
+*.tmp
+*.pid
+tunnel.pid
+
+# OS files
+Thumbs.db

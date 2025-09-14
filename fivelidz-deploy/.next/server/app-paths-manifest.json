@@ -1,0 +1,10 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/sahha/organization-metrics/route": "app/api/sahha/organization-metrics/route.js",
+  "/api/sahha/scores/progressive/route": "app/api/sahha/scores/progressive/route.js",
+  "/api/sahha/profiles/route": "app/api/sahha/profiles/route.js",
+  "/api/sahha/device-information/route": "app/api/sahha/device-information/route.js",
+  "/api/test-connection/route": "app/api/test-connection/route.js",
+  "/api/sahha/demographics/route": "app/api/sahha/demographics/route.js",
+  "/page": "app/page.js"
+}

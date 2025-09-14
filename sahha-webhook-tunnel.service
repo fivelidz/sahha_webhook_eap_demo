@@ -1,0 +1,16 @@
+[Unit]
+Description=Sahha Webhook Tunnel Service
+After=network.target
+
+[Service]
+Type=simple
+User=fivelidz
+WorkingDirectory=/home/fivelidz/sahha_work/sahha-marketing-intelligence/projects/sahha-wellness-template/react-version/profile-manager
+ExecStart=/home/fivelidz/sahha_work/sahha-marketing-intelligence/projects/sahha-wellness-template/react-version/profile-manager/start-webhook-tunnel.sh
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/fivelidz/sahha_work/sahha-marketing-intelligence/projects/sahha-wellness-template/react-version/profile-manager/tunnel-service.log
+StandardError=append:/home/fivelidz/sahha_work/sahha-marketing-intelligence/projects/sahha-wellness-template/react-version/profile-manager/tunnel-service.log
+
+[Install]
+WantedBy=multi-user.target

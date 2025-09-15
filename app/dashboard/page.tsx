@@ -6,7 +6,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import DashboardLayout from '@/components/DashboardLayout';
 import ProfileManagerWebhook from '@/components/ProfileManagerWebhook';
 import ExecutiveDashboardEnhanced from '@/components/ExecutiveDashboardEnhanced';
-import BehavioralIntelligenceEnhanced from '@/components/BehavioralIntelligenceEnhanced';
+import BehavioralIntelligenceOverhaul from '@/components/BehavioralIntelligenceOverhaul';
 import { SahhaDataProvider } from '@/contexts/SahhaDataContext';
 import { Box, Typography } from '@mui/material';
 
@@ -57,7 +57,7 @@ export default function DashboardPage() {
       case 'executive':
         return <ExecutiveDashboardEnhanced orgId="default" />;
       case 'behavioral':
-        return <BehavioralIntelligenceEnhanced orgId="default" />;
+        return <BehavioralIntelligenceOverhaul orgId="default" />;
       case 'department':
         return (
           <Box sx={{ p: 3 }}>

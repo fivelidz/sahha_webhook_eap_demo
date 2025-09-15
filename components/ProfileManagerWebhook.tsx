@@ -132,7 +132,7 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
     } catch (error) {
       console.error('Error loading profiles:', error);
       setDebugInfo({
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         mode: dataMode,
         profileCount: 0
       });
@@ -217,7 +217,7 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
     } else {
       // Select all on current page
       const pageIds = paginatedProfiles.map(p => p.profileId);
-      setSelectedProfiles([...new Set([...selectedProfiles, ...pageIds])]);
+      setSelectedProfiles(Array.from(new Set([...selectedProfiles, ...pageIds])));
     }
   };
 
@@ -241,32 +241,134 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
     return 'error';
   };
 
-  // Export data
+  // Export data with all subscores
   const handleExport = () => {
-    const exportData = profiles.map(p => ({
-      profileId: p.profileId,
-      externalId: p.externalId,
-      department: assignments[p.profileId] || 'unassigned',
-      wellbeing: p.wellbeingScore,
-      activity: p.activityScore,
-      sleep: p.sleepScore,
-      mentalWellbeing: p.mentalWellbeingScore,
-      readiness: p.readinessScore,
-      archetypes: p.archetypes?.join(', '),
-      lastSync: p.lastDataSync
-    }));
+    const exportData = profiles.map(p => {
+      // Extract all subscores and factors
+      const sleepFactors = p.subScores?.sleep || {};
+      const activityFactors = p.subScores?.activity || {};
+      const mentalFactors = p.subScores?.mental_wellbeing || {};
+      const wellbeingFactors = p.subScores?.wellbeing || {};
+      const readinessFactors = p.subScores?.readiness || {};
+      
+      return {
+        // Basic info
+        profileId: p.profileId,
+        externalId: p.externalId,
+        department: assignments[p.profileId] || 'unassigned',
+        
+        // Main scores
+        wellbeing: p.wellbeingScore,
+        wellbeingState: p.wellbeingState,
+        activity: p.activityScore,
+        activityState: p.activityState,
+        sleep: p.sleepScore,
+        sleepState: p.sleepState,
+        mentalWellbeing: p.mentalWellbeingScore,
+        mentalState: p.mentalWellbeingState,
+        readiness: p.readinessScore,
+        readinessState: p.readinessState,
+        
+        // Sleep subscores
+        sleepDuration: sleepFactors.duration?.value || '',
+        sleepDurationScore: sleepFactors.duration?.score || '',
+        sleepEfficiency: sleepFactors.efficiency?.value || '',
+        sleepEfficiencyScore: sleepFactors.efficiency?.score || '',
+        sleepRegularity: sleepFactors.regularity?.value || '',
+        sleepRegularityScore: sleepFactors.regularity?.score || '',
+        sleepDebt: sleepFactors.debt?.value || '',
+        sleepDebtScore: sleepFactors.debt?.score || '',
+        remSleep: sleepFactors.rem_sleep?.value || '',
+        remSleepScore: sleepFactors.rem_sleep?.score || '',
+        deepSleep: sleepFactors.deep_sleep?.value || '',
+        deepSleepScore: sleepFactors.deep_sleep?.score || '',
+        sleepLatency: sleepFactors.latency?.value || '',
+        sleepLatencyScore: sleepFactors.latency?.score || '',
+        sleepInterruptions: sleepFactors.interruptions?.value || '',
+        sleepInterruptionsScore: sleepFactors.interruptions?.score || '',
+        
+        // Activity subscores
+        steps: activityFactors.steps?.value || '',
+        stepsScore: activityFactors.steps?.score || '',
+        activeHours: activityFactors.active_hours?.value || '',
+        activeHoursScore: activityFactors.active_hours?.score || '',
+        exerciseSessions: activityFactors.exercise_sessions?.value || '',
+        exerciseSessionsScore: activityFactors.exercise_sessions?.score || '',
+        caloriesBurned: activityFactors.calories_burned?.value || '',
+        caloriesBurnedScore: activityFactors.calories_burned?.score || '',
+        sedentaryTime: activityFactors.sedentary_time?.value || '',
+        sedentaryTimeScore: activityFactors.sedentary_time?.score || '',
+        moveHourlyCount: activityFactors.move_hourly?.value || '',
+        moveHourlyScore: activityFactors.move_hourly?.score || '',
+        vigorousActivity: activityFactors.vigorous_activity?.value || '',
+        vigorousActivityScore: activityFactors.vigorous_activity?.score || '',
+        
+        // Mental wellbeing subscores
+        stressLevel: mentalFactors.stress_level?.value || '',
+        stressLevelScore: mentalFactors.stress_level?.score || '',
+        focusTime: mentalFactors.focus_time?.value || '',
+        focusTimeScore: mentalFactors.focus_time?.score || '',
+        recovery: mentalFactors.recovery?.value || '',
+        recoveryScore: mentalFactors.recovery?.score || '',
+        moodScore: mentalFactors.mood?.value || '',
+        moodScoreValue: mentalFactors.mood?.score || '',
+        mindfulness: mentalFactors.mindfulness?.value || '',
+        mindfulnessScore: mentalFactors.mindfulness?.score || '',
+        
+        // Readiness subscores
+        physicalRecovery: readinessFactors.physical_recovery?.value || '',
+        physicalRecoveryScore: readinessFactors.physical_recovery?.score || '',
+        mentalClarity: readinessFactors.mental_clarity?.value || '',
+        mentalClarityScore: readinessFactors.mental_clarity?.score || '',
+        energyLevel: readinessFactors.energy_level?.value || '',
+        energyLevelScore: readinessFactors.energy_level?.score || '',
+        sleepQuality: readinessFactors.sleep_quality?.value || '',
+        sleepQualityScore: readinessFactors.sleep_quality?.score || '',
+        hrvBalance: readinessFactors.hrv_balance?.value || '',
+        hrvBalanceScore: readinessFactors.hrv_balance?.score || '',
+        
+        // Archetypes
+        archetypes: p.archetypes?.join(', ') || '',
+        activityArchetype: p.activityArchetype || '',
+        exerciseArchetype: p.exerciseArchetype || '',
+        sleepArchetype: p.sleepArchetype || '',
+        mentalArchetype: p.mentalArchetype || '',
+        
+        // Metadata
+        dataCompleteness: p.dataCompleteness || 0,
+        lastSync: p.lastDataSync
+      };
+    });
     
-    const csv = [
-      Object.keys(exportData[0]).join(','),
-      ...exportData.map(row => Object.values(row).join(','))
-    ].join('\n');
+    if (exportData.length === 0) {
+      alert('No data to export');
+      return;
+    }
     
-    const blob = new Blob([csv], { type: 'text/csv' });
+    // Convert to CSV with proper escaping
+    const headers = Object.keys(exportData[0]);
+    const csvRows = [
+      headers.join(','),
+      ...exportData.map(row => 
+        headers.map(header => {
+          const value = row[header as keyof typeof row];
+          // Escape values that contain commas or quotes
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value ?? '';
+        }).join(',')
+      )
+    ];
+    
+    const csv = csvRows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `profiles_${new Date().toISOString()}.csv`;
+    a.download = `profiles_complete_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -734,8 +836,9 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
                             Detailed Factors
                           </Typography>
                           <Grid container spacing={2}>
-                            {Object.entries(profile.subScores || {}).map(([category, factors]) => (
-                              factors && factors.length > 0 && (
+                            {Object.entries(profile.subScores || {})
+                              .filter(([_, factors]) => factors && (factors as any[]).length > 0)
+                              .map(([category, factors]) => (
                                 <Grid item xs={12} md={6} key={category}>
                                   <Card variant="outlined">
                                     <CardContent>
@@ -764,7 +867,6 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
                                     </CardContent>
                                   </Card>
                                 </Grid>
-                              )
                             ))}
                           </Grid>
                           

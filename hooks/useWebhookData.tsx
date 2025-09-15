@@ -55,14 +55,15 @@ interface WebhookData {
   };
 }
 
-export function useWebhookData(refreshInterval: number = 30000) {
+export function useWebhookData(refreshInterval: number = 30000, demoMode: boolean = false) {
   const [data, setData] = useState<WebhookData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const response = await fetch('/api/sahha/webhook');
+      const url = demoMode ? '/api/sahha/webhook?mode=demo' : '/api/sahha/webhook';
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.statusText}`);
       }
@@ -93,13 +94,13 @@ export function useWebhookData(refreshInterval: number = 30000) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, refreshInterval);
     return () => clearInterval(interval);
-  }, [fetchData, refreshInterval]);
+  }, [fetchData, refreshInterval, demoMode]);
 
   return { data, loading, error, refetch: fetchData };
 }

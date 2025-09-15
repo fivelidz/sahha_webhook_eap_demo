@@ -116,6 +116,7 @@ import {
   ComposedChart,
   Line,
   Area,
+  AreaChart,
   FunnelChart,
   Funnel,
   LabelList
@@ -180,17 +181,28 @@ export default function BehavioralIntelligenceOverhaul({ orgId = 'default' }: Be
 
   // Process real archetype data from webhook events
   const processedArchetypeData = useMemo(() => {
-    if (!data) return { profiles: [], archetypes: {}, patterns: [] };
+    // Generate demo data if no data available
+    if (!data || !data.profiles || data.profiles.length === 0) {
+      const demoProfiles = generateDemoProfiles(100);
+      const archetypeDistributions = calculateArchetypeDistributions(demoProfiles);
+      const patterns = identifyBehavioralPatterns(demoProfiles);
+      
+      return {
+        profiles: demoProfiles,
+        archetypes: archetypeDistributions,
+        patterns
+      };
+    }
 
     // Extract real archetypes from webhook event analysis
-    const archetypeEvents = data.eventAnalysis?.filter(e => 
+    const archetypeEvents = (data as any).eventAnalysis?.filter((e: any) => 
       e.eventType === 'ArchetypeCreatedIntegrationEvent'
     ) || [];
 
     // Map profiles with their archetypes
     const profileArchetypeMap: { [key: string]: any } = {};
     
-    archetypeEvents.forEach(event => {
+    archetypeEvents.forEach((event: any) => {
       const payload = JSON.parse(event.rawPayloadSample || '{}');
       const externalId = payload.externalId;
       
@@ -226,22 +238,17 @@ export default function BehavioralIntelligenceOverhaul({ orgId = 'default' }: Be
       };
     });
 
+    // If still no enriched profiles, use demo data
+    const finalProfiles = enrichedProfiles.length > 0 ? enrichedProfiles : generateDemoProfiles(100);
+
     // Calculate archetype distributions
-    const archetypeDistributions: any = {};
-    Object.keys(SAHHA_ARCHETYPES).forEach(category => {
-      archetypeDistributions[category] = {};
-      Object.keys(SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES]).forEach(value => {
-        archetypeDistributions[category][value] = enrichedProfiles.filter(
-          p => p.archetypes[category]?.value === value
-        ).length;
-      });
-    });
+    const archetypeDistributions = calculateArchetypeDistributions(finalProfiles);
 
     // Identify behavioral patterns
-    const patterns = identifyBehavioralPatterns(enrichedProfiles);
+    const patterns = identifyBehavioralPatterns(finalProfiles);
 
     return {
-      profiles: enrichedProfiles,
+      profiles: finalProfiles,
       archetypes: archetypeDistributions,
       patterns
     };
@@ -329,11 +336,131 @@ export default function BehavioralIntelligenceOverhaul({ orgId = 'default' }: Be
     }
   };
 
+  // State for selected archetype in bar chart
+  const [selectedArchetypeBar, setSelectedArchetypeBar] = useState<string | null>(null);
+  const [selectedArchetypeValue, setSelectedArchetypeValue] = useState<string | null>(null);
+
+  // Handle bar chart click for filtering
+  const handleBarClick = (category: string, value: string) => {
+    if (selectedArchetypeBar === category && selectedArchetypeValue === value) {
+      // Deselect if clicking the same bar
+      setSelectedArchetypeBar(null);
+      setSelectedArchetypeValue(null);
+      setSelectedArchetypeCategory('all');
+    } else {
+      // Select new bar
+      setSelectedArchetypeBar(category);
+      setSelectedArchetypeValue(value);
+      setSelectedArchetypeCategory(`${category}:${value}`);
+    }
+  };
+
   const renderArchetypeDistribution = () => (
     <Grid container spacing={3}>
+      {/* Main Selection Bar Chart System */}
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Archetype Distribution - Click to Filter</Typography>
+              {selectedArchetypeBar && (
+                <Button 
+                  size="small" 
+                  startIcon={<Clear />}
+                  onClick={() => {
+                    setSelectedArchetypeBar(null);
+                    setSelectedArchetypeValue(null);
+                    setSelectedArchetypeCategory('all');
+                  }}
+                >
+                  Clear Filter
+                </Button>
+              )}
+            </Box>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart 
+                data={Object.entries(processedArchetypeData.archetypes).flatMap(([category, distribution]) =>
+                  Object.entries(distribution as any).map(([key, value]) => ({
+                    category: category.replace(/_/g, ' '),
+                    fullCategory: category,
+                    archetype: (SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES] as any)[key]?.label || key,
+                    fullArchetype: key,
+                    value,
+                    color: (SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES] as any)[key]?.color || '#ccc',
+                    selected: selectedArchetypeBar === category && selectedArchetypeValue === key
+                  }))
+                )}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="archetype" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={120}
+                  fontSize={11}
+                />
+                <YAxis label={{ value: 'Number of Profiles', angle: -90, position: 'insideLeft' }} />
+                <RechartsTooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload[0]) {
+                      const data = payload[0].payload;
+                      return (
+                        <Paper sx={{ p: 1.5 }}>
+                          <Typography variant="subtitle2">{data.archetype}</Typography>
+                          <Typography variant="caption" display="block">
+                            Category: {data.category}
+                          </Typography>
+                          <Typography variant="caption" display="block">
+                            Count: {data.value} profiles
+                          </Typography>
+                          <Typography variant="caption" display="block">
+                            Percentage: {((data.value / filteredProfiles.length) * 100).toFixed(1)}%
+                          </Typography>
+                        </Paper>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar 
+                  dataKey="value" 
+                  onClick={(data) => handleBarClick(data.fullCategory, data.fullArchetype)}
+                  cursor="pointer"
+                >
+                  {Object.entries(processedArchetypeData.archetypes).flatMap(([category, distribution]) =>
+                    Object.entries(distribution as any).map(([key], index) => (
+                      <Cell 
+                        key={`cell-${category}-${key}`}
+                        fill={
+                          selectedArchetypeBar === category && selectedArchetypeValue === key
+                            ? (SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES] as any)[key]?.color || '#ccc'
+                            : (selectedArchetypeBar && selectedArchetypeBar !== category) || 
+                              (selectedArchetypeValue && selectedArchetypeValue !== key)
+                            ? '#e0e0e0'
+                            : (SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES] as any)[key]?.color || '#ccc'
+                        }
+                        fillOpacity={
+                          selectedArchetypeBar === category && selectedArchetypeValue === key ? 1 :
+                          selectedArchetypeBar ? 0.3 : 0.8
+                        }
+                      />
+                    ))
+                  )}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Category Breakdowns */}
       {Object.entries(processedArchetypeData.archetypes).map(([category, distribution]) => (
         <Grid item xs={12} md={6} lg={4} key={category}>
-          <Card sx={{ height: '100%' }}>
+          <Card sx={{ 
+            height: '100%',
+            opacity: selectedArchetypeBar && selectedArchetypeBar !== category ? 0.6 : 1,
+            transition: 'opacity 0.3s'
+          }}>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ textTransform: 'capitalize' }}>
                 {category.replace(/_/g, ' ')}
@@ -341,10 +468,11 @@ export default function BehavioralIntelligenceOverhaul({ orgId = 'default' }: Be
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
-                    data={Object.entries(distribution).map(([key, value]) => ({
-                      name: SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES][key]?.label || key,
+                    data={Object.entries(distribution as any).map(([key, value]) => ({
+                      name: (SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES] as any)[key]?.label || key,
                       value,
-                      color: SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES][key]?.color || '#ccc'
+                      color: (SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES] as any)[key]?.color || '#ccc',
+                      selected: selectedArchetypeBar === category && selectedArchetypeValue === key
                     }))}
                     cx="50%"
                     cy="50%"
@@ -353,13 +481,26 @@ export default function BehavioralIntelligenceOverhaul({ orgId = 'default' }: Be
                     fill="#8884d8"
                     dataKey="value"
                     label={({ name, value, percent }) => 
-                      value > 0 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''
+                      value > 0 ? `${(percent * 100).toFixed(0)}%` : ''
                     }
+                    onClick={(data) => handleBarClick(category, data.name)}
                   >
-                    {Object.entries(distribution).map(([key, value], index) => (
+                    {Object.entries(distribution as any).map(([key, value], index) => (
                       <Cell 
                         key={`cell-${index}`} 
-                        fill={SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES][key]?.color || '#ccc'} 
+                        fill={
+                          selectedArchetypeBar === category && selectedArchetypeValue === key
+                            ? (SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES] as any)[key]?.color || '#ccc'
+                            : (selectedArchetypeBar && selectedArchetypeBar !== category) ||
+                              (selectedArchetypeValue && selectedArchetypeValue !== key)
+                            ? '#e0e0e0' 
+                            : (SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES] as any)[key]?.color || '#ccc'
+                        }
+                        fillOpacity={
+                          selectedArchetypeBar === category && selectedArchetypeValue === key ? 1 :
+                          selectedArchetypeBar ? 0.3 : 0.8
+                        }
+                        cursor="pointer"
                       />
                     ))}
                   </Pie>
@@ -369,16 +510,16 @@ export default function BehavioralIntelligenceOverhaul({ orgId = 'default' }: Be
               
               {/* Legend with counts */}
               <Stack spacing={0.5} sx={{ mt: 2 }}>
-                {Object.entries(distribution)
-                  .filter(([_, value]) => value > 0)
+                {Object.entries(distribution as any)
+                  .filter(([_, value]) => (value as number) > 0)
                   .map(([key, value]) => {
-                    const archetype = SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES][key];
+                    const archetype = (SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES] as any)[key];
                     const Icon = archetype?.icon || FiberManualRecord;
                     return (
                       <Stack key={key} direction="row" alignItems="center" spacing={1}>
                         <Icon sx={{ fontSize: 16, color: archetype?.color }} />
                         <Typography variant="caption">
-                          {archetype?.label}: {value} ({Math.round((value / filteredProfiles.length) * 100)}%)
+                          {archetype?.label}: {value} ({Math.round(((value as number) / filteredProfiles.length) * 100)}%)
                         </Typography>
                       </Stack>
                     );
@@ -1014,6 +1155,106 @@ export default function BehavioralIntelligenceOverhaul({ orgId = 'default' }: Be
 }
 
 // Helper functions
+function generateDemoProfiles(count: number): any[] {
+  const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
+  const profiles = [];
+  
+  for (let i = 0; i < count; i++) {
+    const sleepScore = 0.3 + Math.random() * 0.6;
+    const activityScore = 0.2 + Math.random() * 0.7;
+    const mentalScore = 0.3 + Math.random() * 0.6;
+    const wellbeingScore = (sleepScore + activityScore + mentalScore) / 3;
+    
+    const profile = {
+      externalId: `Demo-${i + 1}`,
+      name: `Employee ${i + 1}`,
+      department: departments[Math.floor(Math.random() * departments.length)],
+      scores: {
+        sleep: { value: sleepScore, state: sleepScore > 0.7 ? 'high' : sleepScore > 0.4 ? 'medium' : 'low' },
+        activity: { value: activityScore, state: activityScore > 0.7 ? 'high' : activityScore > 0.4 ? 'medium' : 'low' },
+        mental_wellbeing: { value: mentalScore, state: mentalScore > 0.7 ? 'high' : mentalScore > 0.4 ? 'medium' : 'low' },
+        wellbeing: { value: wellbeingScore, state: wellbeingScore > 0.7 ? 'high' : wellbeingScore > 0.4 ? 'medium' : 'low' }
+      },
+      archetypes: generateArchetypesForProfile(sleepScore, activityScore, mentalScore),
+      behavioralScore: wellbeingScore
+    };
+    
+    profiles.push(profile);
+  }
+  
+  return profiles;
+}
+
+function generateArchetypesForProfile(sleepScore: number, activityScore: number, mentalScore: number): any {
+  const archetypes: any = {};
+  
+  // Sleep pattern
+  const sleepPatternRand = Math.random();
+  archetypes.sleep_pattern = {
+    value: sleepPatternRand < 0.4 ? 'consistent_early_sleeper' :
+           sleepPatternRand < 0.7 ? 'consistent_late_sleeper' : 'variable_sleeper',
+    ordinality: Math.floor(sleepPatternRand * 3)
+  };
+  
+  // Sleep quality
+  archetypes.sleep_quality = {
+    value: sleepScore > 0.8 ? 'optimal_sleep_quality' :
+           sleepScore > 0.6 ? 'good_sleep_quality' :
+           sleepScore > 0.4 ? 'fair_sleep_quality' : 'poor_sleep_quality',
+    ordinality: Math.floor(sleepScore * 4)
+  };
+  
+  // Sleep duration
+  const durationRand = Math.random();
+  archetypes.sleep_duration = {
+    value: durationRand < 0.3 ? 'short_sleeper' :
+           durationRand < 0.7 ? 'average_sleeper' : 'long_sleeper',
+    ordinality: Math.floor(durationRand * 3)
+  };
+  
+  // Sleep regularity
+  const regularityScore = sleepScore * 0.7 + Math.random() * 0.3;
+  archetypes.sleep_regularity = {
+    value: regularityScore > 0.75 ? 'highly_regular_sleeper' :
+           regularityScore > 0.5 ? 'regular_sleeper' :
+           regularityScore > 0.25 ? 'irregular_sleeper' : 'highly_irregular_sleeper',
+    ordinality: Math.floor(regularityScore * 4)
+  };
+  
+  // Bed schedule
+  const bedRand = Math.random();
+  archetypes.bed_schedule = {
+    value: bedRand < 0.33 ? 'early_sleeper' :
+           bedRand < 0.66 ? 'normal_sleeper' : 'late_sleeper',
+    ordinality: Math.floor(bedRand * 3)
+  };
+  
+  // Wake schedule
+  const wakeRand = Math.random();
+  archetypes.wake_schedule = {
+    value: wakeRand < 0.33 ? 'early_riser' :
+           wakeRand < 0.66 ? 'normal_riser' : 'late_riser',
+    ordinality: Math.floor(wakeRand * 3)
+  };
+  
+  return archetypes;
+}
+
+function calculateArchetypeDistributions(profiles: any[]): any {
+  const distributions: any = {};
+  
+  Object.keys(SAHHA_ARCHETYPES).forEach(category => {
+    distributions[category] = {};
+    Object.keys(SAHHA_ARCHETYPES[category as keyof typeof SAHHA_ARCHETYPES]).forEach(value => {
+      distributions[category][value] = profiles.filter(
+        p => p.archetypes[category]?.value === value
+      ).length;
+    });
+  });
+  
+  return distributions;
+}
+
 function generateArchetypesFromScores(scores: any): any {
   // Fallback archetype generation based on scores
   const archetypes: any = {};
@@ -1190,12 +1431,22 @@ function getDepartmentComparison(): any[] {
   // Generate department comparison data
   const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
   
-  return departments.map(dept => ({
-    department: dept,
-    optimal: Math.floor(Math.random() * 20),
-    good: Math.floor(Math.random() * 30),
-    needsImprovement: Math.floor(Math.random() * 25),
-    critical: Math.floor(Math.random() * 10),
-    avgScore: 50 + Math.random() * 30
-  }));
+  return departments.map(dept => {
+    const optimal = 10 + Math.floor(Math.random() * 15);
+    const good = 20 + Math.floor(Math.random() * 20);
+    const needsImprovement = 15 + Math.floor(Math.random() * 15);
+    const critical = 5 + Math.floor(Math.random() * 10);
+    const total = optimal + good + needsImprovement + critical;
+    const avgScore = ((optimal * 0.95 + good * 0.75 + needsImprovement * 0.45 + critical * 0.2) / total) * 100;
+    
+    return {
+      department: dept,
+      optimal,
+      good,
+      needsImprovement,
+      critical,
+      avgScore,
+      total
+    };
+  });
 }

@@ -172,7 +172,7 @@ export default function BehavioralIntelligenceEnhanced({ orgId = 'default' }: Be
     
     if (selectedArchetype !== 'all') {
       const [category, value] = selectedArchetype.split(':');
-      profiles = profiles.filter(p => p.archetypes[category] === value);
+      profiles = profiles.filter(p => (p.archetypes as any)[category] === value);
     }
     
     return profiles;
@@ -186,7 +186,7 @@ export default function BehavioralIntelligenceEnhanced({ orgId = 'default' }: Be
       distributions[category] = {};
       Object.keys(ARCHETYPES[category as keyof typeof ARCHETYPES]).forEach(value => {
         distributions[category][value] = filteredProfiles.filter(
-          p => p.archetypes[category] === value
+          p => (p.archetypes as any)[category] === value
         ).length;
       });
     });
@@ -394,10 +394,10 @@ export default function BehavioralIntelligenceEnhanced({ orgId = 'default' }: Be
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie
-                        data={Object.entries(distribution).map(([key, value]) => ({
-                          name: ARCHETYPES[category as keyof typeof ARCHETYPES][key].label,
+                        data={Object.entries(distribution as any).map(([key, value]) => ({
+                          name: (ARCHETYPES[category as keyof typeof ARCHETYPES] as any)[key].label,
                           value,
-                          color: ARCHETYPES[category as keyof typeof ARCHETYPES][key].color
+                          color: (ARCHETYPES[category as keyof typeof ARCHETYPES] as any)[key].color
                         }))}
                         cx="50%"
                         cy="50%"
@@ -406,10 +406,10 @@ export default function BehavioralIntelligenceEnhanced({ orgId = 'default' }: Be
                         dataKey="value"
                         label={(entry) => `${entry.name}: ${entry.value}`}
                       >
-                        {Object.entries(distribution).map(([key, value], index) => (
+                        {Object.entries(distribution as any).map(([key, value], index) => (
                           <Cell 
                             key={`cell-${index}`} 
-                            fill={ARCHETYPES[category as keyof typeof ARCHETYPES][key].color} 
+                            fill={(ARCHETYPES[category as keyof typeof ARCHETYPES] as any)[key].color} 
                           />
                         ))}
                       </Pie>

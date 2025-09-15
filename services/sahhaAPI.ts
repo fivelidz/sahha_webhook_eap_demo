@@ -11,7 +11,7 @@ import {
   ApiResponse,
   PaginatedResponse,
   EAPDashboardConfig
-} from '../../types/sahha';
+} from '@/types/sahha';
 
 /**
  * Sahha API Client for EAP Dashboard

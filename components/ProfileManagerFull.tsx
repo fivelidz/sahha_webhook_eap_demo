@@ -277,7 +277,7 @@ export default function ProfileManagerFull({ darkMode = false }: ProfileManagerP
       profileId: `demo_${i + 1}`,
       externalId: `demo_ext_${i + 1}`,
       editableProfileId: `EMP-${String(i + 1).padStart(3, '0')}`,
-      deviceType: i % 3 === 0 ? 'iOS' : i % 3 === 1 ? 'Android' : null,
+      deviceType: i % 3 === 0 ? 'iOS' : i % 3 === 1 ? 'Android' : undefined,
       isSampleProfile: false,
       demographics: {
         age: 25 + Math.floor(Math.random() * 30),
@@ -1006,7 +1006,7 @@ export default function ProfileManagerFull({ darkMode = false }: ProfileManagerP
                       <Chip
                         label={formatScore(profile.activityScore)}
                         size="small"
-                        color={getScoreColor(profile.activityScore !== null ? 
+                        color={getScoreColor(profile.activityScore !== null && profile.activityScore !== undefined ? 
                                profile.activityScore * (profile.activityScore <= 1 ? 100 : 1) : null)}
                         sx={{ fontWeight: 'bold' }}
                       />
@@ -1026,7 +1026,7 @@ export default function ProfileManagerFull({ darkMode = false }: ProfileManagerP
                       <Chip
                         label={formatScore(profile.sleepScore)}
                         size="small"
-                        color={getScoreColor(profile.sleepScore !== null ? 
+                        color={getScoreColor(profile.sleepScore !== null && profile.sleepScore !== undefined ? 
                                profile.sleepScore * (profile.sleepScore <= 1 ? 100 : 1) : null)}
                         sx={{ fontWeight: 'bold' }}
                       />
@@ -1046,7 +1046,7 @@ export default function ProfileManagerFull({ darkMode = false }: ProfileManagerP
                       <Chip
                         label={formatScore(profile.mentalWellbeingScore)}
                         size="small"
-                        color={getScoreColor(profile.mentalWellbeingScore !== null ? 
+                        color={getScoreColor(profile.mentalWellbeingScore !== null && profile.mentalWellbeingScore !== undefined ? 
                                profile.mentalWellbeingScore * (profile.mentalWellbeingScore <= 1 ? 100 : 1) : null)}
                         sx={{ fontWeight: 'bold' }}
                       />
@@ -1066,7 +1066,7 @@ export default function ProfileManagerFull({ darkMode = false }: ProfileManagerP
                       <Chip
                         label={formatScore(profile.readinessScore)}
                         size="small"
-                        color={getScoreColor(profile.readinessScore !== null ? 
+                        color={getScoreColor(profile.readinessScore !== null && profile.readinessScore !== undefined ? 
                                profile.readinessScore * (profile.readinessScore <= 1 ? 100 : 1) : null)}
                         sx={{ fontWeight: 'bold' }}
                       />
@@ -1086,7 +1086,7 @@ export default function ProfileManagerFull({ darkMode = false }: ProfileManagerP
                       <Chip
                         label={formatScore(profile.wellbeingScore)}
                         size="small"
-                        color={getScoreColor(profile.wellbeingScore !== null ? 
+                        color={getScoreColor(profile.wellbeingScore !== null && profile.wellbeingScore !== undefined ? 
                                profile.wellbeingScore * (profile.wellbeingScore <= 1 ? 100 : 1) : null)}
                         sx={{ fontWeight: 'bold' }}
                       />

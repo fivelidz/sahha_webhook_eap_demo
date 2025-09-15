@@ -31,7 +31,7 @@ import {
   ContentCopy,
   Refresh
 } from '@mui/icons-material';
-import { SahhaCredentials } from '../../types/sahha';
+import { SahhaCredentials } from '@/types/sahha';
 
 interface ApiKeyManagerProps {
   open: boolean;

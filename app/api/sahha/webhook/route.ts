@@ -20,8 +20,6 @@ interface SahhaWebhookPayload {
   
   // Integration Event fields (Sahha's actual webhook format)
   eventType?: 'ScoreCreatedIntegrationEvent' | 'BiomarkerCreatedIntegrationEvent' | 'DataLogReceivedIntegrationEvent' | 'ArchetypeCreatedIntegrationEvent' | string;
-  data?: any; // The actual payload data
-  timestamp?: string;
   
   // Score payload fields (direct format)
   type?: 'activity' | 'sleep' | 'wellbeing' | 'mental_wellbeing' | 'readiness' | string;
@@ -49,7 +47,6 @@ interface SahhaWebhookPayload {
   
   // Data log integration fields
   logType?: string;
-  dataType?: string;
   receivedAtUtc?: string;
   dataLogs?: Array<{
     id: string;
@@ -66,10 +63,8 @@ interface SahhaWebhookPayload {
   
   // Archetype payload fields
   name?: string;
-  value?: string;
   dataType?: string;
   ordinality?: number;
-  periodicity?: string;
   startDateTime?: string;
   endDateTime?: string;
   
@@ -256,7 +251,7 @@ export async function POST(request: NextRequest) {
       
       // Ensure we have the external ID
       if (!actualPayload.externalId && !actualPayload.profileId) {
-        actualPayload.externalId = externalId;
+        actualPayload.externalId = externalId || undefined;
         actualPayload.profileId = `sahha-${externalId}`;
       }
     } else if (payload.data) {
@@ -358,7 +353,8 @@ export async function POST(request: NextRequest) {
       
       // Handle score payload (from ScoreCreatedIntegrationEvent)
       if ((isScore && actualPayload.type) || eventType === 'ScoreCreatedIntegrationEvent') {
-        existingData[externalId].scores[actualPayload.type] = {
+        const scoreType = actualPayload.type || 'unknown';
+        existingData[externalId].scores[scoreType] = {
           value: actualPayload.score,
           state: actualPayload.state,
           scoreDateTime: actualPayload.scoreDateTime,
@@ -369,10 +365,10 @@ export async function POST(request: NextRequest) {
         
         // Store factors
         if (actualPayload.factors) {
-          existingData[externalId].factors[actualPayload.type] = actualPayload.factors;
+          existingData[externalId].factors[scoreType] = actualPayload.factors;
         }
         
-        console.log(`✅ Updated ${actualPayload.type} score for ${externalId}: ${actualPayload.score}`);
+        console.log(`✅ Updated ${scoreType} score for ${externalId}: ${actualPayload.score}`);
       }
       
       // Handle biomarker payload (from BiomarkerCreatedIntegrationEvent)
@@ -401,7 +397,8 @@ export async function POST(request: NextRequest) {
       
       // Handle archetype payload (from ArchetypeCreatedIntegrationEvent)
       if ((isArchetype && actualPayload.name) || eventType === 'ArchetypeCreatedIntegrationEvent') {
-        existingData[externalId].archetypes[actualPayload.name] = {
+        const archetypeName = actualPayload.name || 'unknown';
+        existingData[externalId].archetypes[archetypeName] = {
           value: actualPayload.value,
           dataType: actualPayload.dataType,
           ordinality: actualPayload.ordinality,
@@ -412,7 +409,7 @@ export async function POST(request: NextRequest) {
           updatedAt: actualPayload.createdAtUtc
         };
         
-        console.log(`✅ Updated archetype '${actualPayload.name}' for ${externalId}: ${actualPayload.value}`);
+        console.log(`✅ Updated archetype '${archetypeName}' for ${externalId}: ${actualPayload.value}`);
       }
       
       // Handle data log payload (from DataLogReceivedIntegrationEvent)
@@ -457,7 +454,7 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        console.log(`✅ Added ${actualPayload.dataLogs.length} data logs for ${logKey} on ${externalId}`);
+        console.log(`✅ Added ${actualPayload.dataLogs?.length || 0} data logs for ${logKey} on ${externalId}`);
       }
       
       existingData[externalId].lastUpdated = actualPayload.createdAtUtc || actualPayload.receivedAtUtc;
@@ -562,12 +559,144 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Generate demo webhook data for testing
+function generateDemoWebhookData() {
+  const profiles: any[] = [];
+  const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
+  const archetypeTypes = {
+    activity: ['sedentary', 'lightly_active', 'moderately_active', 'highly_active'],
+    exercise: ['rare_exerciser', 'occasional_exerciser', 'regular_exerciser', 'frequent_exerciser'],
+    sleep: ['poor_sleeper', 'fair_sleeper', 'good_sleeper', 'excellent_sleeper'],
+    mental: ['poor_mental_wellness', 'fair_mental_wellness', 'good_mental_wellness', 'optimal_mental_wellness']
+  };
+  
+  // Generate 100 demo profiles
+  for (let i = 0; i < 100; i++) {
+    const profileId = `demo-${String(i).padStart(4, '0')}`;
+    const dept = departments[i % departments.length];
+    
+    // Generate scores with some variance
+    const baseScore = 0.5 + (Math.random() * 0.3);
+    
+    const profile = {
+      profileId,
+      externalId: `Demo-User-${i}`,
+      accountId: `demo-account-${Math.floor(i / 10)}`,
+      scores: {
+        wellbeing: {
+          value: Math.min(0.95, baseScore + (Math.random() * 0.2 - 0.1)),
+          state: 'good',
+          updatedAt: new Date().toISOString()
+        },
+        activity: {
+          value: Math.min(0.95, baseScore + (Math.random() * 0.25 - 0.125)),
+          state: 'moderate',
+          updatedAt: new Date().toISOString()
+        },
+        sleep: {
+          value: Math.min(0.95, baseScore + (Math.random() * 0.15 - 0.075)),
+          state: 'good',
+          updatedAt: new Date().toISOString()
+        },
+        mental_wellbeing: {
+          value: Math.min(0.95, baseScore + (Math.random() * 0.2 - 0.1)),
+          state: 'good',
+          updatedAt: new Date().toISOString()
+        },
+        readiness: {
+          value: Math.min(0.95, baseScore + (Math.random() * 0.18 - 0.09)),
+          state: 'ready',
+          updatedAt: new Date().toISOString()
+        }
+      },
+      archetypes: {
+        activity_level: {
+          value: archetypeTypes.activity[Math.floor(baseScore * 4)],
+          dataType: 'categorical',
+          updatedAt: new Date().toISOString()
+        },
+        exercise_frequency: {
+          value: archetypeTypes.exercise[Math.floor(baseScore * 4)],
+          dataType: 'categorical',
+          updatedAt: new Date().toISOString()
+        },
+        sleep_pattern: {
+          value: archetypeTypes.sleep[Math.floor(baseScore * 4)],
+          dataType: 'categorical',
+          updatedAt: new Date().toISOString()
+        },
+        mental_wellness: {
+          value: archetypeTypes.mental[Math.floor(baseScore * 4)],
+          dataType: 'categorical',
+          updatedAt: new Date().toISOString()
+        }
+      },
+      factors: {
+        sleep: [
+          { name: 'sleep_duration', value: 6.5 + Math.random() * 2, unit: 'hours', score: 75 },
+          { name: 'sleep_efficiency', value: 80 + Math.random() * 15, unit: '%', score: 82 },
+          { name: 'sleep_regularity', value: 65 + Math.random() * 20, unit: '%', score: 68 }
+        ],
+        activity: [
+          { name: 'steps', value: 5000 + Math.random() * 5000, unit: 'steps', score: 65 },
+          { name: 'active_hours', value: 2 + Math.random() * 2, unit: 'hours', score: 58 }
+        ]
+      },
+      device: {
+        type: 'mobile',
+        source: 'iOS',
+        lastSeen: new Date().toISOString()
+      },
+      demographics: {
+        age: 25 + Math.floor(Math.random() * 30),
+        gender: Math.random() > 0.5 ? 'male' : 'female',
+        location: 'Demo City'
+      },
+      lastUpdated: new Date().toISOString(),
+      department: dept
+    };
+    
+    profiles.push(profile);
+  }
+  
+  return {
+    profiles,
+    stats: {
+      totalProfiles: profiles.length,
+      withScores: profiles.length,
+      averageWellbeing: 0.68,
+      scoreCoverage: {
+        wellbeing: 100,
+        activity: 100,
+        sleep: 100,
+        mental_wellbeing: 100,
+        readiness: 100
+      }
+    }
+  };
+}
+
 // GET endpoint to retrieve webhook data
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const externalId = searchParams.get('externalId');
+    const mode = searchParams.get('mode');
     
+    // If demo mode is requested, return demo data
+    if (mode === 'demo') {
+      const demoData = generateDemoWebhookData();
+      return NextResponse.json({
+        success: true,
+        count: demoData.profiles.length,
+        profiles: demoData.profiles,
+        lastUpdated: new Date().toISOString(),
+        stats: demoData.stats,
+        demoMode: true
+      });
+    }
+    
+    // Otherwise return real webhook data
     const data = await loadWebhookData();
     
     if (externalId) {

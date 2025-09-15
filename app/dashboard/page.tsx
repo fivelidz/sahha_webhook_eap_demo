@@ -5,8 +5,10 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import DashboardLayout from '@/components/DashboardLayout';
 import ProfileManagerWebhook from '@/components/ProfileManagerWebhook';
-import ExecutiveDashboardEnhanced from '@/components/ExecutiveDashboardEnhanced';
-import BehavioralIntelligenceOverhaul from '@/components/BehavioralIntelligenceOverhaul';
+import ExecutiveDashboardImproved from '@/components/ExecutiveDashboardImproved';
+import BehavioralIntelligenceProper from '@/components/BehavioralIntelligenceProper';
+import DepartmentAnalysisEnhanced from '@/components/DepartmentAnalysisEnhanced';
+import AnalyticsView from '@/components/AnalyticsView';
 import { SahhaDataProvider } from '@/contexts/SahhaDataContext';
 import { Box, Typography } from '@mui/material';
 
@@ -55,23 +57,13 @@ export default function DashboardPage() {
       case 'profile-manager':
         return <ProfileManagerWebhook darkMode={darkMode} />;
       case 'executive':
-        return <ExecutiveDashboardEnhanced orgId="default" />;
+        return <ExecutiveDashboardImproved orgId="default" />;
       case 'behavioral':
-        return <BehavioralIntelligenceOverhaul orgId="default" />;
+        return <BehavioralIntelligenceProper orgId="default" />;
       case 'department':
-        return (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h4">Department Analysis</Typography>
-            <Typography>Coming soon...</Typography>
-          </Box>
-        );
+        return <DepartmentAnalysisEnhanced orgId="default" />;
       case 'analytics':
-        return (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h4">Analytics</Typography>
-            <Typography>Coming soon...</Typography>
-          </Box>
-        );
+        return <AnalyticsView />;
       case 'settings':
         return (
           <Box sx={{ p: 3 }}>

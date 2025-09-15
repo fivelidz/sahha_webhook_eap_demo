@@ -12,8 +12,7 @@ import {
   Divider,
   Chip,
   Stack,
-  Alert,
-  Code
+  Alert
 } from '@mui/material';
 
 export default function MCPGuidePage() {

@@ -100,6 +100,12 @@ const HEALTH_SCORE_COLORS = {
 };
 
 const DEPARTMENT_COLORS = {
+  'tech': '#1976d2',
+  'operations': '#388e3c',
+  'sales': '#f57c00',
+  'admin': '#7b1fa2',
+  'unassigned': '#6b7280',
+  // Legacy mappings
   'Engineering': '#1976d2',
   'Operations': '#388e3c',
   'Sales': '#f57c00',
@@ -185,15 +191,21 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
     }
 
     const profiles = data.profiles;
-    const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
+    // Get unique departments from actual data
+    const departmentSet = new Set<string>();
+    profiles.forEach((p: any) => {
+      const dept = p.department || 'unassigned';
+      departmentSet.add(dept);
+    });
+    const departments = Array.from(departmentSet).sort();
     
-    // Calculate overall metrics
+    // Calculate overall metrics (scores are already 0-100)
     const totalEmployees = profiles.length;
     const avgWellbeing = Math.round(
-      profiles.reduce((sum: number, p: any) => sum + (p.scores?.wellbeing?.value || 0), 0) / profiles.length * 100
+      profiles.reduce((sum: number, p: any) => sum + (p.scores?.wellbeing?.value || 0), 0) / profiles.length
     );
-    const highPerformers = profiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) >= 0.8).length;
-    const needSupport = profiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) < 0.4).length;
+    const highPerformers = profiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) >= 80).length;
+    const needSupport = profiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) < 40).length;
 
     // Build department data based on viewing criteria
     const departmentData = departments.map(dept => {
@@ -213,7 +225,7 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
         };
       }
 
-      // Calculate scores for each metric
+      // Calculate scores for each metric (scores are already 0-100)
       const metrics = {
         overall_health: Math.round(
           deptProfiles.reduce((sum: number, p: any) => {
@@ -221,22 +233,22 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
               p.scores?.wellbeing?.value || 0,
               p.scores?.sleep?.value || 0,
               p.scores?.activity?.value || 0,
-              p.scores?.mental_wellbeing?.value || 0
+              p.scores?.mentalWellbeing?.value || 0
             ];
             return sum + (scores.reduce((a, b) => a + b, 0) / scores.length);
-          }, 0) / count * 100
+          }, 0) / count
         ),
         wellbeing: Math.round(
-          deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.wellbeing?.value || 0), 0) / count * 100
+          deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.wellbeing?.value || 0), 0) / count
         ),
         activity: Math.round(
-          deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.activity?.value || 0), 0) / count * 100
+          deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.activity?.value || 0), 0) / count
         ),
         sleep: Math.round(
-          deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.sleep?.value || 0), 0) / count * 100
+          deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.sleep?.value || 0), 0) / count
         ),
         mental_wellbeing: Math.round(
-          deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.mental_wellbeing?.value || 0), 0) / count * 100
+          deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.mentalWellbeing?.value || 0), 0) / count
         )
       };
 

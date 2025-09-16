@@ -604,7 +604,7 @@ export default function BehavioralIntelligenceFixed({ orgId = 'default' }: Behav
                         {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                       </Typography>
                       <Typography variant="body2" fontWeight="bold">
-                        {typeof value === 'number' ? Math.round(value * 10) / 10 : value}
+                        {typeof value === 'number' ? Math.round(value * 10) / 10 : String(value)}
                         {getSubScoreUnit(key)}
                       </Typography>
                     </Stack>

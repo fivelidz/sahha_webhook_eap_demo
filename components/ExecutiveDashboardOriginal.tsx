@@ -30,7 +30,9 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon
+  ListItemIcon,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   TrendingUp,
@@ -176,6 +178,11 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
   const [viewingCriteria, setViewingCriteria] = useState<ViewingCriteria>('health_scores');
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [showInsights, setShowInsights] = useState(false);
+  
+  // Mobile detection
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   // Process webhook data to match original EAP structure
   const processedData = useMemo(() => {
@@ -557,9 +564,20 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ 
+      p: isMobile ? 1 : isTablet ? 2 : 3,
+      minHeight: '100vh',
+      backgroundColor: 'background.default'
+    }}>
+      {/* Mobile Header */}
+      {isMobile && (
+        <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
+          Executive Dashboard
+        </Typography>
+      )}
+      
       {/* Key Metrics Row */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: isMobile ? 2 : 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
             title="Total Employees"

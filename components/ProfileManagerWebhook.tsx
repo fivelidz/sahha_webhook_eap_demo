@@ -34,6 +34,14 @@ import {
   DialogActions,
   Alert,
   InputAdornment,
+  useMediaQuery,
+  useTheme,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider as MuiDivider
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import {
@@ -68,6 +76,11 @@ interface ProfileManagerWebhookProps {
 }
 
 export default function ProfileManagerWebhook({ darkMode = false }: ProfileManagerWebhookProps) {
+  // Mobile detection
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  
   // State management
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,13 +88,14 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(isMobile ? 5 : 10);
   const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [assignments, setAssignments] = useState<{ [key: string]: string }>({});
   const [showDebug, setShowDebug] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>({});
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [webhookStatus, setWebhookStatus] = useState<'connected' | 'disconnected' | 'demo'>('disconnected');
   const [sortBy, setSortBy] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -397,12 +411,16 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
   };
 
   return (
-    <Box sx={{ width: '100%', p: 3 }}>
+    <Box sx={{ 
+      width: '100%', 
+      p: isMobile ? 1 : isTablet ? 2 : 3,
+      minHeight: '100vh'
+    }}>
       {/* Header */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: isMobile ? 2 : 3 }}>
         <Grid item xs={12} md={6}>
-          <Stack spacing={2}>
-            <Typography variant="h4" fontWeight="bold">
+          <Stack spacing={isMobile ? 1 : 2}>
+            <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold">
               Profile Manager
             </Typography>
             <Stack direction="row" spacing={2} alignItems="center">

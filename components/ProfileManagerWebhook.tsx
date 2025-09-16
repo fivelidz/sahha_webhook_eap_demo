@@ -680,8 +680,16 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
           <LinearProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
+        <TableContainer 
+          component={Paper}
+          sx={{ 
+            overflowX: 'auto',
+            '& .MuiTable-root': {
+              minWidth: isMobile ? 800 : 'auto'
+            }
+          }}
+        >
+          <Table size={isMobile ? "small" : "medium"}>
             <TableHead>
               <TableRow>
                 <TableCell padding="checkbox">

@@ -32,7 +32,10 @@ import {
   ListItemText,
   ListItemIcon,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Tabs,
+  Tab,
+  SwipeableDrawer
 } from '@mui/material';
 import {
   TrendingUp,
@@ -129,6 +132,9 @@ interface MetricCardProps {
 }
 
 function MetricCard({ title, value, subtitle, icon, color, trend, onClick, selected }: MetricCardProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   return (
     <Card 
       sx={{ 
@@ -136,25 +142,43 @@ function MetricCard({ title, value, subtitle, icon, color, trend, onClick, selec
         cursor: onClick ? 'pointer' : 'default',
         border: selected ? 2 : 1,
         borderColor: selected ? `${color}.main` : 'divider',
-        '&:hover': onClick ? { boxShadow: 3 } : {}
+        '&:hover': onClick ? { boxShadow: 3 } : {},
+        transition: 'all 0.3s ease'
       }}
       onClick={onClick}
     >
-      <CardContent>
+      <CardContent sx={{ p: isMobile ? 2 : 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="flex-start">
           <Box flex={1}>
-            <Typography color="textSecondary" gutterBottom variant="body2">
+            <Typography 
+              color="textSecondary" 
+              gutterBottom 
+              variant={isMobile ? "caption" : "body2"}
+              sx={{ fontSize: isMobile ? '0.7rem' : '0.875rem' }}
+            >
               {title}
             </Typography>
-            <Typography variant="h4" component="div" color={`${color}.main`}>
+            <Typography 
+              variant={isMobile ? "h5" : "h4"} 
+              component="div" 
+              color={`${color}.main`}
+              sx={{ fontWeight: 'bold', mb: 0.5 }}
+            >
               {typeof value === 'number' ? value.toLocaleString() : value}
             </Typography>
             {subtitle && (
-              <Typography variant="caption" color="textSecondary">
+              <Typography 
+                variant="caption" 
+                color="textSecondary"
+                sx={{ 
+                  fontSize: isMobile ? '0.65rem' : '0.75rem',
+                  display: isMobile ? 'block' : 'inline'
+                }}
+              >
                 {subtitle}
               </Typography>
             )}
-            {trend !== undefined && (
+            {trend !== undefined && !isMobile && (
               <Box display="flex" alignItems="center" gap={0.5} mt={1}>
                 {trend > 0 ? <TrendingUp sx={{ fontSize: 16, color: 'success.main' }} /> : 
                  trend < 0 ? <TrendingDown sx={{ fontSize: 16, color: 'error.main' }} /> : null}
@@ -164,7 +188,12 @@ function MetricCard({ title, value, subtitle, icon, color, trend, onClick, selec
               </Box>
             )}
           </Box>
-          <Box sx={{ color: `${color}.main` }}>
+          <Box sx={{ 
+            color: `${color}.main`,
+            '& svg': {
+              fontSize: isMobile ? 28 : 40
+            }
+          }}>
             {icon}
           </Box>
         </Box>
@@ -178,6 +207,7 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
   const [viewingCriteria, setViewingCriteria] = useState<ViewingCriteria>('health_scores');
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [showInsights, setShowInsights] = useState(false);
+  const [mobileTabValue, setMobileTabValue] = useState(0);
   
   // Mobile detection
   const theme = useTheme();
@@ -576,9 +606,69 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
         </Typography>
       )}
       
-      {/* Key Metrics Row */}
-      <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: isMobile ? 2 : 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      {/* Key Metrics Row - Horizontal scroll on mobile */}
+      {isMobile ? (
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            overflowX: 'auto', 
+            pb: 2, 
+            mb: 2,
+            '&::-webkit-scrollbar': {
+              height: 6,
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: 'grey.200',
+              borderRadius: 3,
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'grey.400',
+              borderRadius: 3,
+            },
+          }}
+        >
+          <Box sx={{ minWidth: 160, mr: 1 }}>
+            <MetricCard
+              title="Total Employees"
+              value={processedData.totalEmployees}
+              icon={<People />}
+              color="primary"
+              trend={5}
+            />
+          </Box>
+          <Box sx={{ minWidth: 160, mr: 1 }}>
+            <MetricCard
+              title="Avg Wellbeing"
+              value={`${processedData.avgWellbeing}%`}
+              icon={<Psychology />}
+              color={processedData.avgWellbeing >= 70 ? 'success' : processedData.avgWellbeing >= 50 ? 'warning' : 'error'}
+              trend={processedData.avgWellbeing >= 70 ? 3 : -2}
+            />
+          </Box>
+          <Box sx={{ minWidth: 160, mr: 1 }}>
+            <MetricCard
+              title="High Performers"
+              value={processedData.highPerformers}
+              subtitle={`${Math.round((processedData.highPerformers / processedData.totalEmployees) * 100)}%`}
+              icon={<TrendingUp />}
+              color="success"
+              trend={12}
+            />
+          </Box>
+          <Box sx={{ minWidth: 160 }}>
+            <MetricCard
+              title="Need Support"
+              value={processedData.needSupport}
+              subtitle={`${Math.round((processedData.needSupport / processedData.totalEmployees) * 100)}%`}
+              icon={<Warning />}
+              color="error"
+              trend={-8}
+            />
+          </Box>
+        </Box>
+      ) : (
+        <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: isMobile ? 2 : 3 }}>
+          <Grid item xs={12} sm={6} md={3}>
           <MetricCard
             title="Total Employees"
             value={processedData.totalEmployees}
@@ -617,10 +707,29 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
           />
         </Grid>
       </Grid>
+      )}
+
+      {/* Mobile Tabs for Navigation */}
+      {isMobile && (
+        <Paper sx={{ mb: 2 }}>
+          <Tabs 
+            value={mobileTabValue} 
+            onChange={(e, val) => setMobileTabValue(val)}
+            variant="fullWidth"
+            indicatorColor="primary"
+            textColor="primary"
+          >
+            <Tab label="Overview" />
+            <Tab label="Departments" />
+            <Tab label="Insights" />
+          </Tabs>
+        </Paper>
+      )}
 
       {/* Main Chart Area */}
-      <Grid container spacing={3}>
-        {/* Left Side - Viewing Criteria */}
+      <Grid container spacing={isMobile ? 2 : 3}>
+        {/* Left Side - Viewing Criteria - Hide on mobile when not in Overview tab */}
+        {(!isMobile || mobileTabValue === 0) && (
         <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
@@ -696,8 +805,10 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
             </Card>
           )}
         </Grid>
+        )}
 
-        {/* Right Side - Chart */}
+        {/* Right Side - Chart - Show based on mobile tab */}
+        {(!isMobile || mobileTabValue === 0 || mobileTabValue === 1) && (
         <Grid item xs={12} md={9}>
           <Card>
             <CardContent>
@@ -724,6 +835,7 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
             </CardContent>
           </Card>
         </Grid>
+        )}
       </Grid>
     </Box>
   );

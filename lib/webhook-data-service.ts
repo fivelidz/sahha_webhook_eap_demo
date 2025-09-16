@@ -21,6 +21,25 @@ export function generateDemoWebhookData(count: number = 57): any[] {
     const profileId = `demo-${String(i + 1).padStart(4, '0')}`;
     const externalId = `EMP-${String(i + 1).padStart(3, '0')}`;
     
+    // Assign departments based on index
+    let department: string;
+    if (i < 20) {
+      department = 'tech';
+    } else if (i < 31) {
+      department = 'sales';
+    } else if (i < 42) {
+      department = 'operations';
+    } else if (i < 51) {
+      department = 'admin';
+    } else {
+      department = 'unassigned';
+    }
+    
+    // Debug log for first few profiles
+    if (i < 3) {
+      console.log(`🏢 Creating demo profile ${i + 1} with department: ${department}`);
+    }
+    
     // Generate realistic scores
     const scores = {
       wellbeing: Math.random() * 0.4 + 0.5, // 50-90%
@@ -76,6 +95,7 @@ export function generateDemoWebhookData(count: number = 57): any[] {
       profileId,
       externalId,
       accountId: `account-${i + 1}`,
+      department, // Add department to the profile
       scores: Object.entries(scores).reduce((acc, [key, value]) => {
         acc[key] = {
           value,
@@ -136,7 +156,13 @@ function generateBiomarkers(scores: any): any {
 // Load webhook data or generate demo data
 export async function loadWebhookProfiles(mode: 'webhook' | 'demo'): Promise<any[]> {
   if (mode === 'demo') {
-    return generateDemoWebhookData();
+    const demoData = generateDemoWebhookData();
+    console.log('🎯 Generated demo data - first 3 profiles:', demoData.slice(0, 3).map(p => ({
+      profileId: p.profileId,
+      department: p.department,
+      externalId: p.externalId
+    })));
+    return demoData;
   }
   
   try {
@@ -158,6 +184,14 @@ export async function loadWebhookProfiles(mode: 'webhook' | 'demo'): Promise<any
 
 // Format profile for display
 export function formatWebhookProfile(webhookData: any, index: number): any {
+  // Debug first few profiles
+  if (index < 3) {
+    console.log(`🔄 Formatting profile ${index + 1}:`, {
+      original_department: webhookData.department,
+      profileId: webhookData.profileId
+    });
+  }
+  
   const profile = {
     // Keep original Sahha IDs
     profileId: webhookData.profileId || `profile-${index + 1}`,
@@ -169,6 +203,9 @@ export function formatWebhookProfile(webhookData: any, index: number): any {
     // Original IDs from webhook
     originalProfileId: webhookData.profileId,
     originalExternalId: webhookData.externalId,
+    
+    // Department from webhook data
+    department: webhookData.department || null,
     
     // Device information
     deviceType: webhookData.device?.source || webhookData.deviceType || 'Unknown',

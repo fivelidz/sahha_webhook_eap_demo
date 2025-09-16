@@ -95,8 +95,18 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
     const startTime = Date.now();
     
     try {
+      console.log('🚀 Loading profiles in mode:', dataMode);
       const webhookProfiles = await loadWebhookProfiles(dataMode);
+      console.log('📦 Raw webhook profiles - first 3:', webhookProfiles.slice(0, 3).map(p => ({
+        profileId: p.profileId,
+        department: p.department
+      })));
+      
       const formattedProfiles = webhookProfiles.map((p, idx) => formatWebhookProfile(p, idx));
+      console.log('🎯 Formatted profiles - first 3:', formattedProfiles.slice(0, 3).map(p => ({
+        profileId: p.profileId,
+        department: p.department
+      })));
       
       setProfiles(formattedProfiles);
       setLastRefresh(new Date());
@@ -122,12 +132,27 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
         lastUpdated: new Date().toISOString()
       });
       
-      // Initialize assignments
+      // Initialize assignments with departments from profiles
       const newAssignments: any = {};
-      formattedProfiles.forEach(p => {
-        newAssignments[p.profileId] = assignments[p.profileId] || 'unassigned';
+      formattedProfiles.forEach((p, idx) => {
+        // Use department from profile if it exists, otherwise use existing assignment or default to unassigned
+        newAssignments[p.profileId] = p.department || assignments[p.profileId] || 'unassigned';
+        // Debug log for first few profiles
+        if (idx < 3) {
+          console.log(`Profile ${idx + 1} department:`, {
+            profileId: p.profileId,
+            department: p.department,
+            assignment: newAssignments[p.profileId]
+          });
+        }
       });
       setAssignments(newAssignments);
+      console.log('📊 Department distribution:', 
+        Object.values(newAssignments).reduce((acc: any, dept: any) => {
+          acc[dept] = (acc[dept] || 0) + 1;
+          return acc;
+        }, {})
+      );
       
     } catch (error) {
       console.error('Error loading profiles:', error);

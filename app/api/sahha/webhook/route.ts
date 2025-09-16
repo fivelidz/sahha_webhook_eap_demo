@@ -1,6 +1,6 @@
 // Webhook receiver for Sahha data push notifications
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { 
   loadWebhookData, 
   saveWebhookData, 
@@ -481,21 +481,71 @@ async function generateDemoWebhookData() {
     overall_wellness: ['poor', 'fair', 'good', 'optimal']
   };
   
-  // Generate 50 demo profiles with better department distribution
+  // Generate 50 demo profiles with realistic department distribution
   for (let i = 0; i < 50; i++) {
     const profileId = `demo-${String(i).padStart(4, '0')}`;
-    // Better department distribution: 30% unassigned, rest evenly distributed
-    const deptIndex = i < 15 ? 4 : Math.floor((i - 15) / 9); // 15 unassigned, ~9 each for others
-    const dept = departments[Math.min(deptIndex, departments.length - 1)];
     
-    // Generate correlated scores (50-90 range for more realistic data)
-    const baseScore = 50 + Math.random() * 40;
+    // Realistic department distribution:
+    // - Tech: 35% (18 profiles)
+    // - Sales: 20% (10 profiles) 
+    // - Operations: 20% (10 profiles)
+    // - Admin: 15% (7 profiles)
+    // - Unassigned: 10% (5 profiles)
+    let dept: string;
+    if (i < 18) {
+      dept = 'tech';
+    } else if (i < 28) {
+      dept = 'sales';
+    } else if (i < 38) {
+      dept = 'operations';
+    } else if (i < 45) {
+      dept = 'admin';
+    } else {
+      dept = 'unassigned';
+    }
     
-    // Generate individual scores with realistic variance
-    const wellbeingScore = Math.max(0, Math.min(100, baseScore + (Math.random() * 20 - 10)));
-    const activityScore = Math.max(0, Math.min(100, baseScore + (Math.random() * 25 - 12.5)));
-    const sleepScore = Math.max(0, Math.min(100, baseScore + (Math.random() * 15 - 7.5)));
-    const mentalScore = Math.max(0, Math.min(100, baseScore + (Math.random() * 20 - 10)));
+    // Generate correlated scores with department-specific biases
+    let baseScore = 50 + Math.random() * 40;
+    
+    // Department-specific score adjustments for realistic patterns
+    let deptBias = {
+      activity: 0,
+      sleep: 0,
+      mental: 0,
+      wellbeing: 0
+    };
+    
+    switch(dept) {
+      case 'tech':
+        // Tech workers: lower activity, moderate sleep issues
+        deptBias.activity = -10;
+        deptBias.sleep = -5;
+        break;
+      case 'sales':
+        // Sales: high stress, variable sleep
+        deptBias.mental = -8;
+        deptBias.sleep = -10;
+        break;
+      case 'operations':
+        // Operations: better activity, good overall wellness
+        deptBias.activity = 10;
+        deptBias.wellbeing = 5;
+        break;
+      case 'admin':
+        // Admin: moderate across all metrics
+        deptBias.wellbeing = 3;
+        break;
+      case 'unassigned':
+        // Unassigned: more variable, slightly lower scores
+        baseScore -= 5;
+        break;
+    }
+    
+    // Generate individual scores with realistic variance and department bias
+    const wellbeingScore = Math.max(0, Math.min(100, baseScore + deptBias.wellbeing + (Math.random() * 20 - 10)));
+    const activityScore = Math.max(0, Math.min(100, baseScore + deptBias.activity + (Math.random() * 25 - 12.5)));
+    const sleepScore = Math.max(0, Math.min(100, baseScore + deptBias.sleep + (Math.random() * 15 - 7.5)));
+    const mentalScore = Math.max(0, Math.min(100, baseScore + deptBias.mental + (Math.random() * 20 - 10)));
     const readinessScore = Math.max(0, Math.min(100, (wellbeingScore + sleepScore) / 2 + (Math.random() * 10 - 5)));
     
     // Determine archetype indices based on scores

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Context Test</title>
+</head>
+<body>
+<h1>Testing Context Loading</h1>
+<p>Open the browser console and navigate to the dashboard to see the logs.</p>
+<button onclick="goToDashboard()">Go to Dashboard (Clear Cache)</button>
+<pre id="status"></pre>
+
+<script>
+function goToDashboard() {
+  // Clear all storage
+  localStorage.clear();
+  sessionStorage.clear();
+  
+  // Show status
+  document.getElementById('status').textContent = 'Storage cleared. Navigating to dashboard...';
+  
+  // Navigate with cache bypass
+  window.location.href = 'http://localhost:3000/dashboard?' + Date.now();
+}
+
+// Auto navigate after 2 seconds
+setTimeout(() => {
+  document.getElementById('status').textContent = 'Auto-navigating to dashboard in 2 seconds...';
+  setTimeout(goToDashboard, 2000);
+}, 500);
+</script>
+</body>
+</html>

@@ -13,7 +13,7 @@ import {
   LinearProgress,
   Paper
 } from '@mui/material';
-import { useSahhaOrganizationMetrics, useSahhaProfiles } from '../contexts/SahhaDataContext';
+import { useSahhaOrganizationMetrics, useSahhaProfiles } from '../../contexts/SahhaDataContext';
 import {
   Bedtime,
   Schedule,

@@ -17,10 +17,23 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Divider
+  Divider,
+  Tooltip
 } from '@mui/material';
 import { Assessment, Insights, TrendingUp } from '@mui/icons-material';
 import { useWebhookData } from '@/hooks/useWebhookData';
+import { 
+  ResponsiveContainer, 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip,
+  Legend,
+  BarChart,
+  Bar
+} from 'recharts';
 
 // Department color scheme
 const DEPARTMENT_COLORS: { [key: string]: string } = {
@@ -296,24 +309,19 @@ export default function DepartmentAnalysisEAP() {
           </Box>
 
           {selectedMatrix === 'heatmap' && (
-            // Heat Map View - Simplified Grid
-            <Paper sx={{ p: 3 }}>
+            // Heat Map View - Enhanced with better department distinction
+            <Box>
+              <Paper sx={{ p: 3, mb: 3, bgcolor: theme => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50' }}>
+                <Typography variant="h6" sx={{ mb: 1, fontWeight: 700 }}>
+                  Archetype Distribution Matrix
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+                  Comprehensive view of all archetype values across each department
+                </Typography>
+              </Paper>
+              
               <Box sx={{ overflowX: 'auto' }}>
                 <Box sx={{ minWidth: 800 }}>
-                  {/* Column Headers */}
-                  <Box sx={{ display: 'flex', mb: 1 }}>
-                    <Box sx={{ width: 150, pr: 1 }} />
-                    {['Sedentary/Poor', 'Light/Fair', 'Moderate/Good', 'High/Excellent'].map((label, idx) => (
-                      <Box key={label} sx={{ flex: 1, textAlign: 'center' }}>
-                        <Typography variant="caption" sx={{ 
-                          fontWeight: 600,
-                          color: idx === 0 ? '#f44336' : idx === 1 ? '#ff9800' : idx === 2 ? '#4caf50' : '#00c853'
-                        }}>
-                          {label}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
                   
                   {/* Heat Map Rows */}
                   {departments.map(dept => {
@@ -321,130 +329,283 @@ export default function DepartmentAnalysisEAP() {
                     if (stats.totalProfiles === 0) return null;
                     
                     return (
-                      <Box key={dept.id} sx={{ mb: 3 }}>
-                        {/* Department Header */}
+                      <Paper 
+                        key={dept.id} 
+                        elevation={4}
+                        sx={{ 
+                          mb: 4,
+                          p: 3,
+                          border: theme => `3px solid ${dept.color}`,
+                          borderRadius: 2,
+                          position: 'relative',
+                          bgcolor: theme => theme.palette.mode === 'dark' 
+                            ? 'rgba(0, 0, 0, 0.4)' 
+                            : 'rgba(255, 255, 255, 0.95)',
+                          boxShadow: theme => theme.palette.mode === 'dark'
+                            ? `0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 20px ${dept.color}20`
+                            : `0 4px 20px rgba(0, 0, 0, 0.1), inset 0 0 20px ${dept.color}10`,
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: '4px',
+                            bgcolor: dept.color,
+                            borderRadius: '2px 2px 0 0'
+                          }
+                        }}
+                      >
+                        {/* Department Header - Bigger and more prominent */}
                         <Box sx={{ 
                           display: 'flex', 
                           alignItems: 'center', 
-                          mb: 1,
-                          pb: 1,
-                          borderBottom: `2px solid ${dept.color}`
+                          mb: 2,
+                          pb: 1.5,
+                          borderBottom: `3px solid ${dept.color}`
                         }}>
-                          <Typography variant="subtitle2" sx={{ 
-                            fontWeight: 600,
-                            width: 150,
-                            color: dept.color
+                          <Box 
+                            sx={{
+                              width: 8,
+                              height: 32,
+                              bgcolor: dept.color,
+                              mr: 2,
+                              borderRadius: 1
+                            }}
+                          />
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 700,
+                            fontSize: '1.3rem',
+                            color: dept.color,
+                            letterSpacing: '0.5px'
                           }}>
-                            {dept.name}
+                            {dept.name.toUpperCase()}
                           </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            ({stats.totalProfiles} employees)
-                          </Typography>
+                          <Chip
+                            label={`${stats.totalProfiles} employees`}
+                            size="small"
+                            sx={{ 
+                              ml: 2,
+                              bgcolor: dept.color,
+                              color: 'white',
+                              fontWeight: 600
+                            }}
+                          />
                         </Box>
                         
-                        {/* Archetype rows for this department */}
-                        {['activity_level', 'sleep_quality', 'mental_wellness'].map(archetypeName => {
+                        {/* Archetype rows for this department - Stacked horizontal bars */}
+                        {Object.keys(archetypeDefinitions).filter(archetypeName => {
+                          // Only show archetypes that have data
+                          const hasData = matrix[dept.id]?.[archetypeName] && 
+                            Object.keys(matrix[dept.id][archetypeName]).length > 0;
+                          return hasData;
+                        }).map(archetypeName => {
                           const archetypeDistribution = matrix[dept.id]?.[archetypeName] || {};
                           const totalInArchetype = Object.values(archetypeDistribution).reduce((sum: number, count: any) => sum + count, 0);
                           const archDef = archetypeDefinitions[archetypeName];
                           if (!archDef) return null;
                           
-                          // Group values into 4 categories
-                          const categories = [0, 0, 0, 0]; // [poor/sedentary, fair/light, good/moderate, excellent/high]
-                          
-                          Object.entries(archetypeDistribution).forEach(([value, count]: [string, any]) => {
-                            if (value.includes('sedentary') || value.includes('poor')) categories[0] += count;
-                            else if (value.includes('lightly') || value.includes('fair')) categories[1] += count;
-                            else if (value.includes('moderately') || value.includes('good')) categories[2] += count;
-                            else if (value.includes('highly') || value.includes('excellent') || value.includes('optimal')) categories[3] += count;
-                          });
+                          // Get all possible values for this archetype
+                          const allValues = archDef.values;
                           
                           return (
-                            <Box key={archetypeName} sx={{ display: 'flex', mb: 1.5 }}>
-                              <Typography variant="caption" sx={{ 
-                                width: 150, 
-                                pr: 1,
-                                color: 'text.secondary',
-                                fontSize: '0.75rem'
+                            <Box key={archetypeName} sx={{ 
+                              mb: 3,
+                              p: 2,
+                              borderRadius: 1,
+                              bgcolor: theme => theme.palette.mode === 'dark' 
+                                ? 'rgba(255, 255, 255, 0.04)' 
+                                : 'rgba(0, 0, 0, 0.03)',
+                              border: theme => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+                            }}>
+                              <Typography variant="subtitle2" sx={{ 
+                                display: 'block',
+                                color: 'text.primary',
+                                fontSize: '0.95rem',
+                                fontWeight: 700,
+                                mb: 1,
+                                textTransform: 'capitalize'
                               }}>
-                                {archetypeName.replace(/_/g, ' ').toUpperCase()}
+                                {archetypeName.replace(/_/g, ' ')}
                               </Typography>
                               
-                              {/* Heat map cells */}
-                              {categories.map((count, idx) => {
-                                const percentage = totalInArchetype > 0 ? (count / totalInArchetype) * 100 : 0;
-                                
-                                // Color intensity based on percentage
-                                let bgColor = '#f5f5f5';
-                                let textColor = 'text.secondary';
-                                
-                                if (percentage > 0) {
-                                  if (idx === 0) { // Poor/Sedentary - Red
-                                    bgColor = percentage > 50 ? '#d32f2f' : percentage > 25 ? '#ef5350' : '#ffcdd2';
-                                    textColor = percentage > 25 ? 'white' : 'text.primary';
-                                  } else if (idx === 1) { // Fair/Light - Orange
-                                    bgColor = percentage > 50 ? '#f57c00' : percentage > 25 ? '#ff9800' : '#ffe0b2';
-                                    textColor = percentage > 25 ? 'white' : 'text.primary';
-                                  } else if (idx === 2) { // Good/Moderate - Light Green
-                                    bgColor = percentage > 50 ? '#388e3c' : percentage > 25 ? '#66bb6a' : '#c8e6c9';
-                                    textColor = percentage > 25 ? 'white' : 'text.primary';
-                                  } else { // Excellent/High - Dark Green
-                                    bgColor = percentage > 50 ? '#1b5e20' : percentage > 25 ? '#43a047' : '#a5d6a7';
-                                    textColor = percentage > 25 ? 'white' : 'text.primary';
+                              {/* Stacked horizontal bar */}
+                              <Box sx={{ 
+                                position: 'relative',
+                                height: 40,
+                                bgcolor: theme => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+                                borderRadius: 1,
+                                overflow: 'hidden',
+                                border: theme => `1px solid ${theme.palette.mode === 'dark' ? 'grey.800' : 'grey.300'}`
+                              }}>
+                                {allValues.map((value: string, idx: number) => {
+                                  const count = archetypeDistribution[value] || 0;
+                                  const percentage = totalInArchetype > 0 ? (count / totalInArchetype) * 100 : 0;
+                                  
+                                  // Calculate left position
+                                  const leftOffset = allValues.slice(0, idx).reduce((sum, v) => {
+                                    const vCount = archetypeDistribution[v] || 0;
+                                    return sum + (totalInArchetype > 0 ? (vCount / totalInArchetype) * 100 : 0);
+                                  }, 0);
+                                  
+                                  // Color based on archetype value sentiment with dark mode support
+                                  let bgColor = '';
+                                  
+                                  if (count > 0) {
+                                    if (value.includes('poor') || value.includes('sedentary') || value.includes('very_short')) {
+                                      bgColor = '#d32f2f'; // Red
+                                    } else if (value.includes('fair') || value.includes('lightly') || value.includes('short') || value.includes('irregular')) {
+                                      bgColor = '#f57c00'; // Orange
+                                    } else if (value.includes('good') || value.includes('moderately') || value.includes('optimal') || value.includes('regular') || value.includes('normal')) {
+                                      bgColor = '#388e3c'; // Green
+                                    } else if (value.includes('excellent') || value.includes('highly') || value.includes('very_regular')) {
+                                      bgColor = '#1b5e20'; // Dark Green
+                                    } else if (value.includes('long')) {
+                                      bgColor = '#0288d1'; // Blue (for long sleep)
+                                    } else {
+                                      // Neutral/variable values
+                                      bgColor = '#757575'; // Grey
+                                    }
+                                  } else {
+                                    return null;
                                   }
-                                }
+                                  
+                                  return (
+                                    <Tooltip
+                                      key={value}
+                                      title={`${value.replace(/_/g, ' ')}: ${count} (${percentage.toFixed(0)}%)`}
+                                      arrow
+                                    >
+                                      <Box
+                                        sx={{
+                                          position: 'absolute',
+                                          left: `${leftOffset}%`,
+                                          width: `${percentage}%`,
+                                          height: '100%',
+                                          bgcolor: bgColor,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          cursor: 'pointer',
+                                          transition: 'opacity 0.2s',
+                                          '&:hover': {
+                                            opacity: 0.8
+                                          }
+                                        }}
+                                      >
+                                        {percentage > 10 && (
+                                          <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                              color: 'white',
+                                              fontWeight: 600,
+                                              fontSize: '0.7rem'
+                                            }}
+                                          >
+                                            {count}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    </Tooltip>
+                                  );
+                                })}
                                 
-                                return (
-                                  <Box key={idx} sx={{ 
-                                    flex: 1,
+                                {/* Show empty state if no data */}
+                                {totalInArchetype === 0 && (
+                                  <Box sx={{
+                                    position: 'absolute',
+                                    width: '100%',
+                                    height: '100%',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
-                                    height: 32,
-                                    mx: 0.5,
-                                    borderRadius: 1,
-                                    bgcolor: bgColor,
-                                    color: textColor,
-                                    border: percentage > 0 ? 'none' : '1px solid #e0e0e0'
+                                    justifyContent: 'center'
                                   }}>
-                                    {percentage > 0 && (
-                                      <Typography variant="caption" sx={{ fontWeight: percentage > 25 ? 600 : 400 }}>
-                                        {count} ({percentage.toFixed(0)}%)
-                                      </Typography>
-                                    )}
+                                    <Typography variant="caption" color="text.disabled">
+                                      No data
+                                    </Typography>
                                   </Box>
-                                );
-                              })}
+                                )}
+                              </Box>
+                              
+                              {/* Value labels below bar */}
+                              <Box sx={{ 
+                                display: 'flex', 
+                                gap: 0.5, 
+                                mt: 0.5,
+                                flexWrap: 'wrap'
+                              }}>
+                                {allValues.filter(v => (archetypeDistribution[v] || 0) > 0).map((value: string) => {
+                                  const count = archetypeDistribution[value] || 0;
+                                  const percentage = totalInArchetype > 0 ? (count / totalInArchetype) * 100 : 0;
+                                  
+                                  // Color coding
+                                  let chipColor: any = 'default';
+                                  if (value.includes('poor') || value.includes('sedentary') || value.includes('very_short')) {
+                                    chipColor = 'error';
+                                  } else if (value.includes('fair') || value.includes('lightly') || value.includes('short')) {
+                                    chipColor = 'warning';
+                                  } else if (value.includes('good') || value.includes('moderately') || value.includes('optimal')) {
+                                    chipColor = 'success';
+                                  } else if (value.includes('excellent') || value.includes('highly')) {
+                                    chipColor = 'success';
+                                  }
+                                  
+                                  return (
+                                    <Chip
+                                      key={value}
+                                      label={`${value.replace(/_/g, ' ')}: ${percentage.toFixed(0)}%`}
+                                      size="small"
+                                      color={chipColor}
+                                      variant="outlined"
+                                      sx={{ 
+                                        fontSize: '0.65rem',
+                                        height: 20,
+                                        '& .MuiChip-label': {
+                                          px: 1
+                                        }
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </Box>
                             </Box>
                           );
                         })}
-                      </Box>
+                      </Paper>
                     );
                   })}
                   
                   {/* Legend */}
                   <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #e0e0e0' }}>
                     <Typography variant="caption" color="textSecondary" display="block" mb={1}>
-                      LEGEND: Cell color intensity indicates percentage concentration
+                      LEGEND: Color coding by archetype value sentiment
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <Box sx={{ width: 16, height: 16, bgcolor: '#ffcdd2', borderRadius: 0.5 }} />
-                        <Typography variant="caption">Low (&lt;25%)</Typography>
+                        <Typography variant="caption">Poor/Sedentary</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Box sx={{ width: 16, height: 16, bgcolor: '#ef5350', borderRadius: 0.5 }} />
-                        <Typography variant="caption">Medium (25-50%)</Typography>
+                        <Box sx={{ width: 16, height: 16, bgcolor: '#ffe0b2', borderRadius: 0.5 }} />
+                        <Typography variant="caption">Fair/Light</Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Box sx={{ width: 16, height: 16, bgcolor: '#d32f2f', borderRadius: 0.5 }} />
-                        <Typography variant="caption">High (&gt;50%)</Typography>
+                        <Box sx={{ width: 16, height: 16, bgcolor: '#c8e6c9', borderRadius: 0.5 }} />
+                        <Typography variant="caption">Good/Moderate</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ width: 16, height: 16, bgcolor: '#a5d6a7', borderRadius: 0.5 }} />
+                        <Typography variant="caption">Excellent/High</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ width: 16, height: 16, bgcolor: '#e3f2fd', borderRadius: 0.5 }} />
+                        <Typography variant="caption">Neutral/Other</Typography>
                       </Box>
                     </Box>
                   </Box>
                 </Box>
               </Box>
-            </Paper>
+            </Box>
           )}
 
           {selectedMatrix === 'summary' && (
@@ -511,72 +672,133 @@ export default function DepartmentAnalysisEAP() {
           )}
 
           {selectedMatrix === 'trends' && (
-            // Trend Analysis View
+            // Trend Analysis View with actual time-series data
             <Grid container spacing={3}>
               <Grid item xs={12}>
-                <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                <Paper sx={{ p: 2 }}>
                   <Typography variant="h6" gutterBottom>
-                    Cross-Department Behavioral Trends
+                    Department Wellness Trends Over Time
                   </Typography>
                   <Typography variant="body2" color="textSecondary" mb={2}>
-                    Identify patterns and opportunities for targeted EAP interventions
+                    Track changes in department wellness scores over the past 7 days
                   </Typography>
                   
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
-                      <Box>
-                        <Typography variant="subtitle2" color="error.main" gutterBottom>
-                          🚨 High-Priority Interventions Needed
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          • 23% of Technology dept shows low activity levels
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          • 18% of Sales shows poor sleep patterns
-                        </Typography>
-                        <Typography variant="body2">
-                          • 15% of Administration shows mental wellness concerns
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    
-                    <Grid item xs={12} md={4}>
-                      <Box>
-                        <Typography variant="subtitle2" color="success.main" gutterBottom>
-                          ✅ Positive Behavioral Patterns
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          • Operations shows strong activity consistency
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          • Technology demonstrates good sleep regularity
-                        </Typography>
-                        <Typography variant="body2">
-                          • Admin shows high mental wellness scores
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    
-                    <Grid item xs={12} md={4}>
-                      <Box>
-                        <Typography variant="subtitle2" color="primary.main" gutterBottom>
-                          💡 EAP Recommendations by Department
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Technology:</strong> Implement activity challenges and ergonomic programs
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Sales:</strong> Focus on stress management and sleep hygiene workshops
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Operations:</strong> Maintain current wellness momentum with recognition programs
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Administration:</strong> Provide specialized mental health resources and peer support
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  </Grid>
+                  {/* Generate simulated time-series data for demonstration */}
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={(() => {
+                      // Generate last 7 days of data
+                      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                      return days.map((day, idx) => {
+                        const baseData: any = { day };
+                        departments.forEach(dept => {
+                          const stats = getDepartmentStats(dept.id);
+                          if (stats.totalProfiles > 0) {
+                            // Calculate average wellness score for department
+                            const deptProfiles = profiles.filter((p: any) => 
+                              (profileAssignments[p.profileId || p.externalId] || 'unassigned') === dept.id
+                            );
+                            const avgScore = deptProfiles.reduce((sum: number, p: any) => {
+                              const wellbeing = p.scores?.wellbeing?.value || 50;
+                              const activity = p.scores?.activity?.value || 50;
+                              const sleep = p.scores?.sleep?.value || 50;
+                              return sum + ((wellbeing + activity + sleep) / 3);
+                            }, 0) / (deptProfiles.length || 1);
+                            
+                            // Add some variation to simulate trends
+                            baseData[dept.name] = Math.round(avgScore + (Math.random() * 10 - 5) - (idx * 0.5));
+                          }
+                        });
+                        return baseData;
+                      });
+                    })()}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis domain={[0, 100]} label={{ value: 'Wellness Score', angle: -90, position: 'insideLeft' }} />
+                      <RechartsTooltip />
+                      <Legend />
+                      {departments.filter(dept => getDepartmentStats(dept.id).totalProfiles > 0).map(dept => (
+                        <Line 
+                          key={dept.id}
+                          type="monotone" 
+                          dataKey={dept.name} 
+                          stroke={dept.color} 
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Paper>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Activity Level Changes by Department
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={departments.filter(dept => getDepartmentStats(dept.id).totalProfiles > 0).map(dept => {
+                      const deptProfiles = profiles.filter((p: any) => 
+                        (profileAssignments[p.profileId || p.externalId] || 'unassigned') === dept.id
+                      );
+                      const sedentaryCount = deptProfiles.filter((p: any) => 
+                        p.archetypes?.activity_level?.value === 'sedentary'
+                      ).length;
+                      const activeCount = deptProfiles.filter((p: any) => 
+                        p.archetypes?.activity_level?.value === 'highly_active' ||
+                        p.archetypes?.activity_level?.value === 'moderately_active'
+                      ).length;
+                      
+                      return {
+                        department: dept.name,
+                        sedentary: Math.round((sedentaryCount / deptProfiles.length) * 100) || 0,
+                        active: Math.round((activeCount / deptProfiles.length) * 100) || 0
+                      };
+                    })}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="department" />
+                      <YAxis domain={[0, 100]} label={{ value: 'Percentage', angle: -90, position: 'insideLeft' }} />
+                      <RechartsTooltip />
+                      <Legend />
+                      <Bar dataKey="sedentary" fill="#FF7043" name="Sedentary %" />
+                      <Bar dataKey="active" fill="#4CAF50" name="Active %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Paper>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Sleep Quality Distribution
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={departments.filter(dept => getDepartmentStats(dept.id).totalProfiles > 0).map(dept => {
+                      const deptProfiles = profiles.filter((p: any) => 
+                        (profileAssignments[p.profileId || p.externalId] || 'unassigned') === dept.id
+                      );
+                      const poorSleep = deptProfiles.filter((p: any) => 
+                        (p.scores?.sleep?.value || 50) < 50
+                      ).length;
+                      const goodSleep = deptProfiles.filter((p: any) => 
+                        (p.scores?.sleep?.value || 50) >= 70
+                      ).length;
+                      
+                      return {
+                        department: dept.name,
+                        poorSleep: Math.round((poorSleep / deptProfiles.length) * 100) || 0,
+                        goodSleep: Math.round((goodSleep / deptProfiles.length) * 100) || 0
+                      };
+                    })}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="department" />
+                      <YAxis domain={[0, 100]} label={{ value: 'Percentage', angle: -90, position: 'insideLeft' }} />
+                      <RechartsTooltip />
+                      <Legend />
+                      <Bar dataKey="poorSleep" fill="#FF9800" name="Poor Sleep %" />
+                      <Bar dataKey="goodSleep" fill="#2196F3" name="Good Sleep %" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </Paper>
               </Grid>
             </Grid>

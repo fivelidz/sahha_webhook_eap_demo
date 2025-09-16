@@ -1,6 +1,6 @@
 'use client';
 
-import { SahhaDataProvider } from '../dashboard/contexts/SahhaDataContext';
+import { SahhaDataProvider } from '../contexts/SahhaDataContext';
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (

@@ -1,6 +1,6 @@
-# Sahha EAP Dashboard with Webhook Integration
+# Sahha EAP Dashboard Demo
 
-A modern Employee Assistance Program (EAP) dashboard that integrates with Sahha's behavioral intelligence platform through webhooks.
+A comprehensive Employee Assistance Program (EAP) dashboard showcasing Sahha's behavioral intelligence and wellness tracking capabilities with demo data.
 
 ## Features
 

@@ -62,8 +62,8 @@ export function useWebhookData(refreshInterval: number = 30000, demoMode: boolea
 
   const fetchData = useCallback(async () => {
     try {
-      // Default to demo mode
-      const url = demoMode || true ? '/api/sahha/webhook?mode=demo' : '/api/sahha/webhook';
+      // Always use demo mode for now
+      const url = demoMode ? '/api/sahha/webhook?mode=demo' : '/api/sahha/webhook';
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.statusText}`);

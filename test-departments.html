@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Department Test</title>
+</head>
+<body>
+<h1>Testing Department Loading</h1>
+<button onclick="clearAndReload()">Clear Storage and Reload Dashboard</button>
+<button onclick="checkProfiles()">Check Profile Data</button>
+<pre id="output"></pre>
+
+<script>
+function clearAndReload() {
+  localStorage.clear();
+  sessionStorage.clear();
+  window.location.href = 'http://localhost:3000/dashboard';
+}
+
+async function checkProfiles() {
+  try {
+    // Fetch demo data from the API
+    const response = await fetch('http://localhost:3000/api/sahha/webhook?mode=demo');
+    const data = await response.json();
+    
+    const output = document.getElementById('output');
+    
+    // Show department distribution
+    const deptCounts = {};
+    data.profiles.forEach(p => {
+      const dept = p.department || 'unassigned';
+      deptCounts[dept] = (deptCounts[dept] || 0) + 1;
+    });
+    
+    output.textContent = `
+Total Profiles: ${data.profiles.length}
+
+Department Distribution:
+${JSON.stringify(deptCounts, null, 2)}
+
+First 10 Profiles:
+${data.profiles.slice(0, 10).map(p => 
+  `ID: ${p.profileId}, Dept: ${p.department || 'MISSING'}`
+).join('\n')}
+
+Sample Profile Structure:
+${JSON.stringify(data.profiles[0], null, 2)}
+`;
+  } catch (error) {
+    document.getElementById('output').textContent = 'Error: ' + error.message;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,56 +1,72 @@
-# Sahha EAP Dashboard - Complete Model Context Protocol (MCP)
+# 🤖 AI Agent Technical Reference: Sahha EAP Dashboard with Webhook Integration
 
-## 🎯 Purpose
-This document serves as the complete reference for implementing, deploying, and maintaining the Sahha Employee Assistance Program (EAP) Dashboard with webhook integration. It combines all learnings, best practices, and implementation details for others to successfully replicate this solution.
+## Executive Summary for AI Agents
+This is a complete technical reference for building and maintaining a Sahha wellness dashboard with real-time webhook integration. The system receives behavioral health data, manages department assignments, and provides enterprise-grade wellness analytics.
 
-## 📋 Table of Contents
+**Critical Understanding**: Sahha uses NON-STANDARD webhook headers (X-Signature, X-External-Id, X-Event-Type) instead of typical webhook patterns. This is the #1 integration issue.
+
+## 📋 Quick Navigation
 1. [System Overview](#system-overview)
-2. [Architecture](#architecture)
-3. [Webhook Integration](#webhook-integration)
-4. [Dashboard Features](#dashboard-features)
-5. [Setup Guide](#setup-guide)
-6. [Testing & Validation](#testing--validation)
-7. [Common Issues & Solutions](#common-issues--solutions)
-8. [Production Deployment](#production-deployment)
+2. [File Structure Map](#file-structure-map)
+3. [Data Flow Architecture](#data-flow-architecture)
+4. [Webhook Implementation](#webhook-implementation)
+5. [Department Logic](#department-logic)
+6. [Common Failures & Fixes](#common-failures--fixes)
+7. [Testing Commands](#testing-commands)
+8. [Production Checklist](#production-checklist)
 
 ---
 
 ## System Overview
 
-### What This System Does
-- **Receives** real-time behavioral health data from Sahha via webhooks
-- **Stores** profile data with proper concurrency handling
-- **Displays** comprehensive dashboard with scores, factors, and archetypes
-- **Manages** employee profiles with department assignments
-- **Supports** bulk operations for enterprise management
+### Core Purpose
+Build a real-time wellness dashboard that receives Sahha behavioral data via webhooks, manages employee profiles with department assignments, and provides enterprise analytics.
 
-### Key Components
+### Critical Architecture Points
 ```
+🚨 IMPORTANT: Sahha Webhook Flow
 ┌─────────────────┐     ┌──────────────┐     ┌─────────────┐
 │   Sahha API     │────▶│   Webhook    │────▶│  Dashboard  │
-│  (Data Source)  │     │   Handler    │     │    (UI)     │
+│                 │     │   Handler    │     │              │
 └─────────────────┘     └──────────────┘     └─────────────┘
-         │                      │                     │
-         ▼                      ▼                     ▼
-   Sends Events          Stores Data          Displays Data
-   with Headers          with Mutex           with React
+    ↓                        ↓                     ↓
+X-Headers ONLY!         Mutex Lock            Department UI
+NOT Standard!          File Storage          ProfileManagerWebhook
 ```
 
-## Architecture
+## File Structure Map
 
-### Technology Stack
-- **Frontend**: Next.js 14, TypeScript, Material-UI
-- **Backend**: Next.js API Routes
-- **Storage**: File-based with mutex locking (upgradeable to database)
-- **Tunnel**: Ngrok for local development
-- **Deployment**: Vercel/Any Node.js host
+```bash
+# CRITICAL FILES FOR AI AGENTS
+/
+├── app/
+│   ├── api/sahha/webhook/
+│   │   └── route.ts              # ⚠️ WEBHOOK HANDLER - X-Headers required!
+│   ├── dashboard/
+│   │   └── page.tsx              # Main dashboard using ProfileManagerWebhook
+│   ├── dashboard-guide/
+│   │   └── page.tsx              # Promotional content (rewritten)
+│   └── mcp-guide/
+│       └── page.tsx              # This AI agent guide
+│
+├── components/
+│   ├── ProfileManagerWebhook.tsx # ✅ CORRECT UI (NOT ProfileManagement!)
+│   ├── ProfileManagement.tsx     # ❌ DO NOT USE - Bad UI per user
+│   └── ExecutiveDashboardOriginal.tsx
+│
+├── lib/
+│   └── webhook-data-service.ts   # 🏢 Department assignment logic here!
+│
+├── contexts/
+│   └── SahhaDataContext.tsx      # Global state with departments
+│
+└── data/                          # File storage (dev only)
+    ├── sahha-webhook-data.json    # Webhook data
+    ├── department-assignments.json # Department mappings
+    └── webhook-activity.log       # Activity log
+```
 
-### Data Flow
-1. Sahha sends webhook with headers (X-Signature, X-External-Id, X-Event-Type)
-2. Webhook handler verifies signature
-3. Data processed based on event type
-4. Stored with file locking to prevent race conditions
-5. Dashboard fetches and displays data
+## Data Flow Architecture
 
 ## Webhook Integration
 
@@ -106,373 +122,298 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-### Data Storage Structure
+## Department Logic
 
-```json
-{
-  "externalId": {
-    "profileId": "sahha-id",
-    "externalId": "external-id",
-    "scores": {
-      "sleep": { "value": 0.87, "state": "high" },
-      "activity": { "value": 0.65, "state": "medium" },
-      "mental_wellbeing": { "value": 0.75, "state": "high" },
-      "readiness": { "value": 0.70, "state": "medium" },
-      "wellbeing": { "value": 0.72, "state": "medium" }
-    },
-    "factors": {
-      "sleep": [...],
-      "activity": [...]
-    },
-    "biomarkers": {...}
+### The Critical Department Assignment
+```typescript
+// /lib/webhook-data-service.ts - generateDemoWebhookData()
+
+// THIS IS WHERE DEPARTMENTS ARE ASSIGNED!
+for (let i = 0; i < 57; i++) {
+  let department: string;
+  
+  // DEPARTMENT DISTRIBUTION (MUST MATCH!)
+  if (i < 20) {
+    department = 'tech';        // Index 0-19
+  } else if (i < 31) {
+    department = 'sales';       // Index 20-30
+  } else if (i < 42) {
+    department = 'operations';  // Index 31-41  
+  } else if (i < 51) {
+    department = 'admin';       // Index 42-50
+  } else {
+    department = 'unassigned';  // Index 51+
   }
+  
+  profiles.push({
+    profileId: `demo-${String(i).padStart(4, '0')}`,
+    externalId: `TestProfile-${String(i + 1).padStart(3, '0')}`,
+    department,  // <-- CRITICAL: Must be here!
+    // ... other fields
+  });
 }
 ```
 
-## Dashboard Features
-
-### Profile Management
-- ✅ **Checkbox Selection** - Select multiple profiles
-- ✅ **Bulk Assignment** - Assign departments in bulk
-- ✅ **Search & Filter** - Find profiles quickly
-- ✅ **Editable IDs** - Customize profile identifiers
-- ✅ **Department Assignment** - Organize by teams
-
-### Data Display
-- ✅ **Five Score Types** - Sleep, Activity, Mental Wellbeing, Readiness, Wellbeing
-- ✅ **Expandable Factors** - View detailed sub-scores
-- ✅ **Behavioral Archetypes** - Display user patterns
-- ✅ **Real-time Updates** - Live webhook data
-- ✅ **Data Mode Toggle** - Switch between webhook/demo
-
-### Important Notes
-1. **Sahha Only Sends Sleep Data Initially** - For sample profiles, only sleep scores are available. This is NOT a bug.
-2. **Mental Wellbeing Format** - Sahha uses `mental_wellbeing` (underscore), dashboard expects `mentalWellbeing` (camelCase). This is handled automatically.
-
-## Setup Guide
-
-### Prerequisites
-```bash
-# Required
-- Node.js 18+
-- npm or yarn
-- Sahha account with webhook access
-```
-
-### Installation
-
-1. **Clone Repository**
-```bash
-git clone https://github.com/fivelidz/eap_update_webhook.git
-cd eap_update_webhook
-```
-
-2. **Install Dependencies**
-```bash
-npm install
-```
-
-3. **Environment Variables**
-```bash
-# Create .env.local
-SAHHA_WEBHOOK_SECRET=your-webhook-secret-from-sahha
-```
-
-4. **Start Development Server**
-```bash
-npm run dev
-```
-
-### Webhook Setup
-
-#### Using Ngrok (Recommended for Development)
-
-1. **Install Ngrok**
-```bash
-npm install -g ngrok
-```
-
-2. **Configure Auth Token**
-```bash
-ngrok config add-authtoken YOUR_AUTH_TOKEN
-```
-
-3. **Start Tunnel**
-```bash
-ngrok http 3000
-```
-
-4. **Configure in Sahha Dashboard**
-- URL: `https://your-tunnel.ngrok.io/api/sahha/webhook`
-- Events: All event types
-- Secret: Copy to `.env.local`
-
-## Testing & Validation
-
-### Automated Test Suite
-```bash
-# Run comprehensive tests
-chmod +x test-webhook.sh
-./test-webhook.sh
-```
-
-### Manual Testing
-```bash
-# Test with proper headers
-curl -X POST https://your-tunnel.ngrok.io/api/sahha/webhook \
-  -H "X-Signature: test" \
-  -H "X-External-Id: test-001" \
-  -H "X-Event-Type: ScoreCreatedIntegrationEvent" \
-  -H "X-Bypass-Signature: test" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "sleep",
-    "score": 0.85,
-    "state": "high",
-    "scoreDateTime": "2025-09-14T00:00:00Z"
-  }'
-```
-
-### Verification Checklist
-- [ ] Webhook receives data (check logs)
-- [ ] Data stored in `/data/sahha-webhook-data.json`
-- [ ] Dashboard displays scores
-- [ ] Checkbox selection works
-- [ ] Bulk assignment functions
-- [ ] Factors expand correctly
-
-## Common Issues & Solutions
-
-### Issue: "Only Sleep Data Showing"
-**Cause**: Sahha only sends sleep data for sample profiles  
-**Solution**: This is expected. Other scores appear when Sahha sends them.  
-**Verification**: Check the actual webhook payload from Sahha
-
-### Issue: "503 Service Unavailable"
-**Cause**: Tunnel is down  
-**Solution**: 
-```bash
-# Restart ngrok
-ngrok http 3000
-# Update webhook URL in Sahha dashboard
-```
-
-### Issue: "Invalid Signature"
-**Cause**: Secret mismatch  
-**Solution**: 
-1. Copy secret from Sahha dashboard
-2. Update `SAHHA_WEBHOOK_SECRET` in `.env.local`
-3. Restart server
-
-### Issue: "Missing Headers"
-**Cause**: Testing with wrong format  
-**Solution**: Use the correct Sahha header format (X-Signature, X-External-Id, X-Event-Type)
-
-### Issue: "Data Not Persisting"
-**Cause**: File locking issues  
-**Solution**: Ensure `/data` directory has write permissions
-```bash
-mkdir -p data
-chmod 755 data
-```
-
-## Production Deployment
-
-### Vercel Deployment
-
-1. **Push to GitHub**
-```bash
-git push origin main
-```
-
-2. **Import to Vercel**
-- Connect GitHub repo
-- Set environment variables
-- Deploy
-
-3. **Configure Webhook URL**
-- Update Sahha dashboard with production URL
-- Example: `https://your-app.vercel.app/api/sahha/webhook`
-
-### Security Considerations
-
-1. **Always Verify Signatures**
+### Preserving Departments in Formatting
 ```typescript
-// Never skip signature verification in production
-if (!verifySignature(signature, payload, secret)) {
-  return unauthorized();
-}
-```
+// /lib/webhook-data-service.ts - formatWebhookProfile()
 
-2. **Use HTTPS Only**
-- Webhooks should only accept HTTPS connections
-- Reject HTTP in production
-
-3. **Rate Limiting**
-- Implement rate limiting for webhook endpoint
-- Prevent abuse and DDoS
-
-4. **Database Migration**
-- For production, migrate from file storage to database
-- PostgreSQL or MongoDB recommended
-
-### Monitoring
-
-1. **Webhook Activity Log**
-- Check `/data/webhook-activity.log`
-- Monitor for failures
-
-2. **Health Checks**
-```typescript
-// Add health endpoint
-export async function GET() {
-  const profiles = await loadWebhookData();
+function formatWebhookProfile(webhookData: any): Profile {
   return {
-    status: 'healthy',
-    profileCount: Object.keys(profiles).length,
-    lastUpdate: getLastUpdate()
+    profileId: webhookData.profileId,
+    externalId: webhookData.externalId,
+    department: webhookData.department || null, // <-- PRESERVE THIS!
+    // ... other fields
   };
 }
 ```
 
-## Performance Optimization
+## Common Failures & Fixes
 
-### Caching Strategy
+### 🔴 FAILURE: "All departments show Unassigned"
+**Root Cause**: Department not preserved in `formatWebhookProfile()`
 ```typescript
-// Implement caching for dashboard
-const CACHE_DURATION = 60000; // 1 minute
-let cache = { data: null, timestamp: 0 };
+// ❌ WRONG
+function formatWebhookProfile(webhookData: any): Profile {
+  return {
+    profileId: webhookData.profileId,
+    // Missing department field!
+  };
+}
 
-function getCachedData() {
-  if (Date.now() - cache.timestamp < CACHE_DURATION) {
-    return cache.data;
-  }
-  return null;
+// ✅ CORRECT
+function formatWebhookProfile(webhookData: any): Profile {
+  return {
+    profileId: webhookData.profileId,
+    department: webhookData.department || null, // PRESERVE THIS!
+  };
 }
 ```
 
-### Database Schema (Future)
-```sql
--- Recommended schema for production
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY,
-  external_id VARCHAR(255) UNIQUE,
-  profile_id VARCHAR(255),
-  created_at TIMESTAMP DEFAULT NOW()
-);
+### 🔴 FAILURE: "Wrong UI component"
+**Root Cause**: Using ProfileManagement instead of ProfileManagerWebhook
+```typescript
+// ❌ WRONG - Bad UI per user feedback
+import ProfileManagement from '@/components/ProfileManagement';
 
-CREATE TABLE scores (
-  id UUID PRIMARY KEY,
-  profile_id UUID REFERENCES profiles(id),
-  type VARCHAR(50),
-  value DECIMAL(3,2),
-  state VARCHAR(20),
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_scores_profile ON scores(profile_id);
-CREATE INDEX idx_scores_type ON scores(type);
+// ✅ CORRECT - Good UI
+import ProfileManagerWebhook from '@/components/ProfileManagerWebhook';
 ```
 
-## API Reference
+### 🔴 FAILURE: "createDemoProfiles is not defined"
+**Root Cause**: Function called before definition in context
+```typescript
+// ❌ WRONG - Function used before definition
+const initialState = {
+  profiles: createDemoProfiles(), // Error!
+};
+const createDemoProfiles = () => {...};
 
-### Webhook Endpoint
-**POST** `/api/sahha/webhook`
-
-Headers:
-- `X-Signature`: HMAC-SHA256 signature
-- `X-External-Id`: Profile external ID
-- `X-Event-Type`: Event type
-
-Response:
-```json
-{
-  "success": true,
-  "message": "Webhook processed successfully",
-  "profilesProcessed": 1
-}
+// ✅ CORRECT - Define first
+const createDemoProfiles = () => {...};
+const initialState = {
+  profiles: createDemoProfiles(),
+};
 ```
 
-### Data Retrieval
-**GET** `/api/sahha/webhook`
-
-Response:
-```json
-{
-  "success": true,
-  "count": 54,
-  "profiles": [...],
-  "lastUpdated": "2025-09-14T16:00:00Z"
-}
-```
-
-## Support & Resources
-
-### Documentation
-- [Sahha Webhook Docs](https://docs.sahha.ai/webhooks)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Material-UI Components](https://mui.com/components)
-
-### Troubleshooting
-1. Check server logs: `npm run dev`
-2. Verify webhook logs: `/data/webhook-activity.log`
-3. Test with test script: `./test-webhook.sh`
-
-### Contact
-- **Sahha Support**: support@sahha.ai
-- **Dashboard Issues**: Create issue on [GitHub](https://github.com/fivelidz/eap_update_webhook)
-
----
-
-## Version History
-
-### v1.0.0 (September 14, 2025)
-- Initial release with full webhook integration
-- Checkbox selection and bulk operations
-- Complete score type support
-- Comprehensive testing suite
-
-### Known Limitations
-1. Sahha sample profiles only include sleep data
-2. File-based storage (database recommended for production)
-3. No real-time updates (polling required)
-
----
-
-**Last Updated**: September 14, 2025  
-**Maintainer**: Alexei Brown  
-**License**: MIT
-
----
-
-## Quick Reference Card
-
-### Essential Commands
+### 🔴 FAILURE: "Missing webhook headers"
+**Root Cause**: Using standard webhook format instead of Sahha format
 ```bash
-# Development
-npm run dev                    # Start dev server
-ngrok http 3000               # Start tunnel
-./test-webhook.sh             # Run tests
+# ❌ WRONG
+curl -H "webhook-signature: xxx"
 
-# Deployment
-git push origin main          # Deploy to GitHub
-vercel                        # Deploy to Vercel
-
-# Debugging
-tail -f data/webhook-activity.log     # Watch webhook logs
-jq . data/sahha-webhook-data.json     # View stored data
+# ✅ CORRECT
+curl -H "X-Signature: xxx" \
+     -H "X-External-Id: xxx" \
+     -H "X-Event-Type: ScoreCreatedIntegrationEvent"
 ```
 
-### Webhook Test Command
+## Testing Commands
+
+### Quick Test Suite for AI Agents
 ```bash
+# 1. Check server status
+curl http://localhost:3000/api/sahha/webhook?mode=status
+
+# 2. Get demo data (57 profiles with departments)
+curl http://localhost:3000/api/sahha/webhook?mode=demo | jq '.profiles[0:3]'
+
+# 3. Test webhook with bypass (development only)
 curl -X POST http://localhost:3000/api/sahha/webhook \
   -H "X-Bypass-Signature: test" \
   -H "X-External-Id: test-001" \
   -H "X-Event-Type: ScoreCreatedIntegrationEvent" \
   -H "Content-Type: application/json" \
   -d '{"type":"sleep","score":0.85,"state":"high"}'
+
+# 4. Check department distribution
+curl http://localhost:3000/api/sahha/webhook?mode=demo | \
+  jq '.profiles | group_by(.department) | map({dept: .[0].department, count: length})'
+
+# 5. Verify first tech profile
+curl http://localhost:3000/api/sahha/webhook?mode=demo | \
+  jq '.profiles[0] | {id: .profileId, dept: .department, scores: .scores | keys}'
+```
+
+### Debug Console Commands
+```javascript
+// Run in browser console at http://localhost:3000
+
+// Check loaded profiles
+console.table(window.__SAHHA_PROFILES__.slice(0,5))
+
+// Check department assignments
+const depts = window.__SAHHA_PROFILES__.reduce((acc, p) => {
+  acc[p.department] = (acc[p.department] || 0) + 1;
+  return acc;
+}, {});
+console.table(depts);
+
+// Find unassigned profiles
+const unassigned = window.__SAHHA_PROFILES__.filter(p => !p.department || p.department === 'unassigned');
+console.log(`Unassigned: ${unassigned.length} profiles`, unassigned);
+```
+
+## Production Checklist
+
+### Pre-Deployment Verification
+```bash
+# 1. Test department distribution
+npm run dev
+curl http://localhost:3000/api/sahha/webhook?mode=demo | \
+  jq '.profiles | group_by(.department) | length'
+# Expected: 5 departments (tech, sales, operations, admin, unassigned)
+
+# 2. Verify webhook handler
+grep "X-Signature" app/api/sahha/webhook/route.ts
+# Must find X-Headers, not standard headers
+
+# 3. Check UI component
+grep "ProfileManagerWebhook" app/dashboard/page.tsx
+# Must use ProfileManagerWebhook, NOT ProfileManagement
+
+# 4. Verify department preservation  
+grep "department:" lib/webhook-data-service.ts
+# Must preserve department field in formatWebhookProfile
+```
+
+### Environment Variables
+```bash
+# .env.local (development)
+SAHHA_WEBHOOK_SECRET=test-secret
+
+# .env.production  
+SAHHA_WEBHOOK_SECRET=production-secret-from-sahha
+NEXT_PUBLIC_API_URL=https://your-domain.com
+DATABASE_URL=postgresql://... # For production DB
+```
+
+### Security Hardening
+```typescript
+// Remove bypass in production!
+// ❌ NEVER in production
+if (request.headers.get('X-Bypass-Signature')) {
+  // Skip verification - DEV ONLY!
+}
+
+// ✅ Production code
+if (!verifySignature(signature, body, secret)) {
+  return unauthorized();
+}
 ```
 
 ---
 
-**Remember**: The key to successful integration is understanding Sahha's specific webhook format with required headers. This is different from typical webhook implementations!
+## 🚀 AI Agent Quick Deploy
+
+### One-Line Deploy Check
+```bash
+# Run this to verify everything is ready
+grep -q "X-Signature" app/api/sahha/webhook/route.ts && \
+grep -q "ProfileManagerWebhook" app/dashboard/page.tsx && \
+grep -q "department:" lib/webhook-data-service.ts && \
+echo "✅ READY TO DEPLOY" || echo "❌ FIX ISSUES FIRST"
+```
+
+### Critical Success Factors
+1. **X-Headers** - Not standard webhook headers
+2. **ProfileManagerWebhook** - Not ProfileManagement component  
+3. **Department preservation** - Must keep department field
+4. **Demo data departments** - Index-based assignment (0-19=tech, etc.)
+5. **Mutex locking** - Prevent concurrent write corruption
+
+---
+
+## 📊 Data Schema Reference
+
+### Profile Object Structure
+```typescript
+interface Profile {
+  profileId: string;           // "demo-0001"
+  externalId: string;          // "TestProfile-001"  
+  department: string | null;   // "tech" | "sales" | etc.
+  scores: {
+    [key: string]: {
+      value: number;           // 0-1 or 0-100
+      state: string;           // "low" | "medium" | "high"
+    }
+  };
+  demographics?: {
+    age?: number;
+    gender?: string;
+  };
+}
+```
+
+### Webhook Event Payload
+```json
+{
+  "type": "sleep",              // Score type
+  "score": 0.85,               // Value (0-1)
+  "state": "high",             // State
+  "scoreDateTime": "2025-09-16T00:00:00Z"
+}
+```
+
+---
+
+## 🔧 Maintenance Commands
+
+### Reset Everything
+```bash
+# Nuclear option - fresh start
+rm -rf .next node_modules data/*.json
+npm install
+npm run dev
+```
+
+### Monitor Live Data
+```bash
+# Watch webhook activity
+tail -f data/webhook-activity.log
+
+# Monitor profile count
+watch -n 5 'curl -s localhost:3000/api/sahha/webhook | jq .count'
+
+# Check department distribution live
+watch -n 5 'curl -s localhost:3000/api/sahha/webhook?mode=demo | \
+  jq ".profiles | group_by(.department) | map({d: .[0].department, n: length})"'
+```
+
+---
+
+## 🎯 Success Metrics
+
+Your implementation is correct when:
+- ✅ Demo data shows 5 departments (not all "unassigned")
+- ✅ ProfileManagerWebhook renders with checkboxes
+- ✅ Webhook accepts X-Headers
+- ✅ Department dropdowns show actual departments
+- ✅ Test webhook creates new profiles
+
+---
+
+**AI Agent Note**: This document prioritizes actionable technical details over theory. Use the test commands to verify each component works before attempting fixes. The most common failure is forgetting Sahha's X-Header format.
+
+**Last Updated**: September 16, 2025  
+**For**: AI Agents building Sahha integrations

@@ -49,7 +49,7 @@ import {
   PolarRadiusAxis,
   Radar
 } from 'recharts';
-import { useSahhaProfiles } from '../contexts/SahhaDataContext';
+import { useSahhaProfiles } from '../../contexts/SahhaDataContext';
 
 interface BehavioralIntelligenceProps {
   orgId: string;

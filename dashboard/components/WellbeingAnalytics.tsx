@@ -15,7 +15,7 @@ import {
   Tooltip,
   IconButton
 } from '@mui/material';
-import { useSahhaOrganizationMetrics, useSahhaProfiles } from '../contexts/SahhaDataContext';
+import { useSahhaOrganizationMetrics, useSahhaProfiles } from '../../contexts/SahhaDataContext';
 import {
   Psychology,
   TrendingUp,

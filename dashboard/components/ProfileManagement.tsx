@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSahhaProfiles } from '../contexts/SahhaDataContext';
+import { useSahhaProfiles } from '../../contexts/SahhaDataContext';
 import { useSahhaArchetypes } from '../hooks/useSahhaArchetypes';
 import {
   Box,

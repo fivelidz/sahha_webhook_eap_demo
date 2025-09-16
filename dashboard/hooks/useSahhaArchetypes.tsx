@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useSahhaProfiles } from '../contexts/SahhaDataContext';
+import { useSahhaProfiles } from '../../contexts/SahhaDataContext';
 
 // Complete Sahha Archetype System based on official documentation
 // https://docs.sahha.ai/docs/products/archetypes

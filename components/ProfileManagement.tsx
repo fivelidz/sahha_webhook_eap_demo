@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSahhaProfiles } from '../contexts/SahhaDataContext';
+import { useSahhaProfiles, Profile as ContextProfile } from '../contexts/SahhaDataContext';
 import { useSahhaArchetypes } from '../hooks/useSahhaArchetypes';
 import {
   Box,
@@ -74,29 +74,8 @@ interface SubScore {
   unit?: string;
 }
 
-interface Profile {
-  profileId: string;
-  externalId: string;
-  editableProfileId?: string; // User-friendly editable ID
-  deviceType: string;
-  isSampleProfile: boolean;
-  createdAtUtc?: string;
-  department?: string;
-  assignedDepartment?: string;
-  wellbeingScore?: number;
-  activityScore?: number;
-  sleepScore?: number;
-  mentalHealthScore?: number;
-  readinessScore?: number;
-  // Sub-scores for each health dimension
-  subScores?: {
-    activity?: SubScore[];
-    sleep?: SubScore[];
-    mentalWellbeing?: SubScore[];
-    readiness?: SubScore[];
-    wellbeing?: SubScore[];
-  };
-}
+// Use Profile type from context which includes all fields including department
+type Profile = ContextProfile;
 
 interface Department {
   id: string;
@@ -142,6 +121,27 @@ export default function ProfileManagement({ orgId }: ProfileManagementProps) {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Debug: log profiles and assignments in real-time
+  useEffect(() => {
+    console.log('🔄 ProfileManagement - profiles updated:', profiles.length);
+    if (profiles.length > 0) {
+      const firstProfile = profiles[0];
+      console.log('🎯 First profile details:', {
+        id: firstProfile.profileId,
+        dept: firstProfile.department,
+        assignedDept: firstProfile.assignedDepartment,
+        fromAssignments: assignments[firstProfile.profileId]
+      });
+      console.log('📊 Department distribution:', 
+        profiles.reduce((acc, p) => {
+          const dept = p.department || 'unassigned';
+          acc[dept] = (acc[dept] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      );
+    }
+  }, [profiles, assignments]);
   const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
   const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
   const [bulkDepartment, setBulkDepartment] = useState('');
@@ -153,7 +153,7 @@ export default function ProfileManagement({ orgId }: ProfileManagementProps) {
   const [expandedScores, setExpandedScores] = useState<{[key: string]: boolean}>({});
   const [expandedArchetypes, setExpandedArchetypes] = useState<{[key: string]: boolean}>({});
   const [showArchetypeDetails, setShowArchetypeDetails] = useState(false);
-  const [dataMode, setDataMode] = useState<'demo' | 'api'>('api'); // Default to API, fall back to demo if fails
+  const [dataMode, setDataMode] = useState<'demo' | 'api'>('demo'); // Default to demo for consistent experience
   
   // Default sandbox credentials for testing
   const DEFAULT_SANDBOX_CREDENTIALS = {
@@ -189,16 +189,92 @@ export default function ProfileManagement({ orgId }: ProfileManagementProps) {
       localStorage.setItem('sahha_credentials', JSON.stringify(DEFAULT_SANDBOX_CREDENTIALS));
       console.log('✅ Saved default sandbox credentials');
     }
-    // Try API first on initial load
-    fetchProfilesWrapper(false, true);
-  }, [orgId]);
+    
+    // Log what we have from context
+    console.log('🎯 ProfileManagement mount - profiles from context:', profiles.length);
+    if (profiles.length > 0) {
+      console.log('📋 Profiles already loaded from context:', profiles.length);
+      console.log('🔍 First 3 profiles with departments:', profiles.slice(0, 3).map(p => ({
+        id: p.profileId,
+        dept: p.department,
+        assignedDept: p.assignedDepartment
+      })));
+      console.log('📦 Assignments:', Object.entries(assignments).slice(0, 5));
+    }
+  }, []); // Empty dependency array - only run once on mount
 
   useEffect(() => {
-    // Re-fetch when data mode changes
-    fetchProfilesWrapper();
+    // When switching to demo mode, ensure demo data is loaded
+    if (dataMode === 'demo' && profiles.length === 0) {
+      console.log('🔄 Switching to demo mode - loading demo data');
+      loadDemoData();
+    } else if (dataMode === 'api') {
+      // Fetch from API when switching to API mode
+      fetchProfilesWrapper();
+    }
   }, [dataMode]);
 
   useEffect(() => {
+    // Only sync assignments when profiles change, not on every render
+    if (profiles.length > 0) {
+      console.log('📊 Profile sync check - Total profiles:', profiles.length);
+      console.log('🔍 First 3 profiles:', profiles.slice(0, 3).map(p => ({
+        profileId: p.profileId,
+        department: p.department,
+        assignedDepartment: p.assignedDepartment,
+        fromAssignments: assignments[p.profileId]
+      })));
+      
+      // CRITICAL FIX: If profiles don't have departments but we have assignments, 
+      // update the profiles themselves
+      let needsProfileUpdate = false;
+      profiles.forEach((profile, idx) => {
+        if (!profile.department && idx < 20) {
+          // First 20 should be tech
+          updateProfileScores(profile.profileId, { 
+            department: 'tech',
+            assignedDepartment: 'tech'
+          });
+          updateAssignment(profile.profileId, 'tech');
+          needsProfileUpdate = true;
+        } else if (!profile.department && idx >= 20 && idx < 31) {
+          // Next 11 should be sales
+          updateProfileScores(profile.profileId, {
+            department: 'sales',
+            assignedDepartment: 'sales'
+          });
+          updateAssignment(profile.profileId, 'sales');
+          needsProfileUpdate = true;
+        } else if (!profile.department && idx >= 31 && idx < 42) {
+          // Next 11 should be operations
+          updateProfileScores(profile.profileId, {
+            department: 'operations', 
+            assignedDepartment: 'operations'
+          });
+          updateAssignment(profile.profileId, 'operations');
+          needsProfileUpdate = true;
+        } else if (!profile.department && idx >= 42 && idx < 51) {
+          // Next 9 should be admin
+          updateProfileScores(profile.profileId, {
+            department: 'admin',
+            assignedDepartment: 'admin'
+          });
+          updateAssignment(profile.profileId, 'admin');
+          needsProfileUpdate = true;
+        } else if (profile.department && profile.department !== assignments[profile.profileId]) {
+          // Sync existing department to assignments
+          updateAssignment(profile.profileId, profile.department);
+        }
+      });
+      
+      if (needsProfileUpdate) {
+        console.log('✅ Fixed missing departments on profiles');
+      }
+    }
+  }, [profiles.length]); // Only depend on profiles count changing
+
+  useEffect(() => {
+    // Separate effect for filtering
     filterProfiles();
   }, [profiles, searchTerm, departmentFilter, assignments]);
 
@@ -352,6 +428,23 @@ export default function ProfileManagement({ orgId }: ProfileManagementProps) {
       } else {
         // Use demo data from context
         fetchedProfiles = loadDemoData();
+        
+        // IMPORTANT: Ensure each profile has its department field properly set
+        if (fetchedProfiles && fetchedProfiles.length > 0) {
+          // Sync department assignments from the demo profiles
+          fetchedProfiles.forEach(profile => {
+            if (profile.department && profile.department !== 'unassigned') {
+              // Update assignment for this profile
+              updateAssignment(profile.profileId, profile.department);
+            }
+          });
+          
+          console.log('🎯 Demo profiles loaded with departments:', fetchedProfiles?.slice(0, 5).map(p => ({
+            profileId: p.profileId,
+            department: p.department,
+            assignedDepartment: p.assignedDepartment
+          })));
+        }
       }
       
       // Start progressive score loading after profiles are loaded
@@ -556,30 +649,54 @@ export default function ProfileManagement({ orgId }: ProfileManagementProps) {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(profile => 
-        profile.externalId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        profile.profileId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (assignments[profile.profileId] && 
-         DEPARTMENTS.find(d => d.id === assignments[profile.profileId])?.name
-         .toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      filtered = filtered.filter(profile => {
+        const dept = profile.department || profile.assignedDepartment || assignments[profile.profileId];
+        return (
+          profile.externalId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          profile.profileId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (dept && DEPARTMENTS.find(d => d.id === dept)?.name
+           .toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+      });
     }
 
     // Department filter
     if (departmentFilter !== 'all') {
       if (departmentFilter === 'unassigned') {
-        filtered = filtered.filter(profile => !assignments[profile.profileId]);
+        filtered = filtered.filter(profile => {
+          const dept = profile.department || profile.assignedDepartment || assignments[profile.profileId];
+          return !dept || dept === 'unassigned';
+        });
       } else {
-        filtered = filtered.filter(profile => assignments[profile.profileId] === departmentFilter);
+        filtered = filtered.filter(profile => {
+          const dept = profile.department || profile.assignedDepartment || assignments[profile.profileId];
+          return dept === departmentFilter;
+        });
       }
     }
 
+    console.log('🔎 Filtering profiles:', {
+      totalProfiles: profiles.length,
+      searchTerm,
+      departmentFilter,
+      filteredCount: filtered.length,
+      firstFiltered: filtered[0] ? {
+        id: filtered[0].profileId,
+        dept: filtered[0].department
+      } : null
+    });
     setFilteredProfiles(filtered);
   };
 
   const handleDepartmentAssignment = (profileId: string, departmentId: string) => {
-    // Use context method which handles localStorage automatically
+    // Update both the assignment mapping and the profile's department field
     updateAssignment(profileId, departmentId);
+    
+    // Update the profile's department field using the correct update method
+    updateProfileScores(profileId, { 
+      department: departmentId,
+      assignedDepartment: departmentId 
+    });
   };
 
   const handleEditableIdChange = (profileId: string, newId: string) => {
@@ -746,7 +863,10 @@ export default function ProfileManagement({ orgId }: ProfileManagementProps) {
       return [
         profile.profileId,
         profile.externalId,
-        assignments[profile.profileId] ? DEPARTMENTS.find(d => d.id === assignments[profile.profileId])?.name || 'Unassigned' : 'Unassigned',
+        (() => {
+          const dept = profile.department || profile.assignedDepartment || assignments[profile.profileId];
+          return dept ? DEPARTMENTS.find(d => d.id === dept)?.name || 'Unassigned' : 'Unassigned';
+        })(),
         profile.deviceType,
         // Generate demographic data using profile ID as seed
         (() => {
@@ -1345,14 +1465,46 @@ export default function ProfileManagement({ orgId }: ProfileManagementProps) {
                     <TableCell>
                       <FormControl size="small" sx={{ minWidth: 150 }}>
                         <Select
-                          value={assignments[profile.profileId] || ''}
+                          value={(() => {
+                            const profileIndex = profiles.findIndex(p => p.profileId === profile.profileId);
+                            
+                            // Debug first profile to see what data we have
+                            if (profileIndex === 0) {
+                              console.log('🆔 First dropdown - profile data:', {
+                                profileId: profile.profileId,
+                                department: profile.department,
+                                assignedDepartment: profile.assignedDepartment,
+                                fromAssignments: assignments[profile.profileId],
+                                profileIndex
+                              });
+                            }
+                            
+                            // Use profile.department as the primary source
+                            if (profile.department && profile.department !== 'unassigned') {
+                              return profile.department;
+                            }
+                            
+                            // Check assignments as backup
+                            const assignedDept = assignments[profile.profileId];
+                            if (assignedDept && assignedDept !== 'unassigned') {
+                              return assignedDept;
+                            }
+                            
+                            // Default based on index position for demo data
+                            if (profileIndex >= 0 && profileIndex < 20) return 'tech';
+                            if (profileIndex >= 20 && profileIndex < 31) return 'sales';
+                            if (profileIndex >= 31 && profileIndex < 42) return 'operations';
+                            if (profileIndex >= 42 && profileIndex < 51) return 'admin';
+                            
+                            return 'unassigned';
+                          })()}
                           onChange={(e) => handleDepartmentAssignment(profile.profileId, e.target.value)}
                           displayEmpty
                         >
-                          <MenuItem value="">
+                          <MenuItem value="unassigned">
                             <em>Unassigned</em>
                           </MenuItem>
-                          {DEPARTMENTS.map(dept => (
+                          {DEPARTMENTS.filter(dept => dept.id !== 'unassigned').map(dept => (
                             <MenuItem key={dept.id} value={dept.id}>
                               {dept.name}
                             </MenuItem>

@@ -369,15 +369,22 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
         
         if (count === 0) return null;
 
-        const dailySteps = Math.round(
+        // Calculate actual steps (not in thousands) with realistic defaults
+        const avgSteps = Math.round(
           deptProfiles.reduce((sum: number, p: any) => 
-            sum + (p.subScores?.activity?.steps || 7000), 0) / count / 1000
-        ); // in thousands
+            sum + (p.subScores?.activity?.steps || 7000), 0) / count
+        );
         
-        const activeMinutes = deptProfiles.reduce((sum: number, p: any) => 
-          sum + (p.subScores?.activity?.activeMinutes || 30), 0) / count;
-        const activeHours = Math.round(activeMinutes / 60);
-        const inactiveHours = 24 - activeHours;
+        // Cap steps at 20k for display scale
+        const dailySteps = Math.min(20, Math.round(avgSteps / 1000)); // Cap at 20 (representing 20k steps)
+        
+        // Calculate active hours based on activity score (more realistic)
+        const activityScore = deptProfiles.reduce((sum: number, p: any) => 
+          sum + (p.scores?.activity?.value || 50), 0) / count;
+        
+        // Map activity score to active hours (0-100 score -> 0-8 active hours)
+        const activeHours = Math.round((activityScore / 100) * 8);
+        const inactiveHours = Math.round(16 - activeHours); // Assuming 8 hours sleep
         
         const overallScore = Math.round(
           deptProfiles.reduce((sum: number, p: any) => 
@@ -422,8 +429,8 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
               <ComposedChart data={activitySubscores}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="department" />
-                <YAxis yAxisId="count" orientation="left" label={{ value: 'Steps (1000s) / Score', angle: -90, position: 'insideLeft' }} />
-                <YAxis yAxisId="time" orientation="right" domain={[0, 24]} label={{ value: 'Hours', angle: 90, position: 'insideRight' }} />
+                <YAxis yAxisId="count" orientation="left" domain={[0, 100]} label={{ value: 'Steps (1000s) / Score', angle: -90, position: 'insideLeft' }} />
+                <YAxis yAxisId="time" orientation="right" domain={[0, 20]} label={{ value: 'Hours', angle: 90, position: 'insideRight' }} />
                 <RechartsTooltip />
                 <Legend />
                 <Bar yAxisId="count" dataKey="dailySteps" fill="#4CAF50" name="Daily Steps (1000s)" />
@@ -483,9 +490,9 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
             <Bar yAxisId="time" dataKey="duration" fill="#2196F3" name="Sleep Duration (hrs)" />
             <Bar yAxisId="debt" dataKey="sleepDebt" fill="#FF9800" name="Sleep Debt (min)" />
             
-            {/* Score-based metrics - using lines for better visibility */}
-            <Line yAxisId="debt" type="monotone" dataKey="overallScore" stroke="#4CAF50" strokeWidth={2} name="Overall Sleep Score" />
-            <Line yAxisId="debt" type="monotone" dataKey="sleepRegularity" stroke="#00BCD4" strokeWidth={2} name="Sleep Regularity" />
+            {/* Score-based metrics - using bars for consistency */}
+            <Bar yAxisId="debt" dataKey="overallScore" fill="#4CAF50" name="Overall Sleep Score" />
+            <Bar yAxisId="debt" dataKey="sleepRegularity" fill="#00BCD4" name="Sleep Regularity" />
           </ComposedChart>
         </ResponsiveContainer>
       );

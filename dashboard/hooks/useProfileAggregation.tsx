@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useSahhaProfiles } from '../contexts/SahhaDataContext';
+import { useSahhaProfiles } from '../../contexts/SahhaDataContext';
 
 interface Department {
   id: string;

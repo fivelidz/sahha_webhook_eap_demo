@@ -2,6 +2,21 @@
 
 A comprehensive Employee Assistance Program (EAP) dashboard showcasing Sahha's behavioral intelligence and wellness tracking capabilities with demo data.
 
+## 🚀 Live Demo
+
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://sahha-webhook-eap-demo.vercel.app/dashboard)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-green?style=for-the-badge)](https://sahha-webhook-eap-demo.vercel.app/dashboard)
+
+**🌐 [View Live Demo →](https://sahha-webhook-eap-demo.vercel.app/dashboard)**
+
+### Quick Links:
+- 📊 [Executive Dashboard](https://sahha-webhook-eap-demo.vercel.app/dashboard) - Main analytics dashboard
+- 📚 [Dashboard Guide](https://sahha-webhook-eap-demo.vercel.app/dashboard-guide) - User guide for EAP managers
+- 🔧 [Technical Documentation](https://sahha-webhook-eap-demo.vercel.app/mcp-guide) - Webhook integration guide
+
+### Mobile Friendly
+📱 **Fully responsive** - Works perfectly on phones, tablets, and desktops
+
 ## Features
 
 - 🔄 **Real-time Webhook Integration** - Receive live data from Sahha
@@ -149,6 +164,15 @@ The app can be deployed to any platform that supports Next.js:
 2. Verify data format matches expected structure
 3. Check browser console for errors
 
+## Demo Data
+
+This demo includes:
+- **57 employee profiles** with complete wellness scores
+- **5 departments**: Tech (20), Sales (11), Operations (11), Admin (9), Unassigned (6)
+- **15+ behavioral archetypes** including sleep patterns, activity levels, and stress responses
+- **Real-time updates** every 30 seconds
+- **Department analytics** with heat maps and trend analysis
+
 ## Contributing
 
 Pull requests are welcome! Please open an issue first to discuss changes.
@@ -161,5 +185,9 @@ MIT
 
 For issues or questions:
 - Open an issue on GitHub
-- Contact Sahha support for API questions
+- Contact Sahha support for API questions: support@sahha.ai
 - Check Sahha documentation at https://docs.sahha.ai
+
+---
+
+**Built with ❤️ using [Sahha](https://sahha.ai) behavioral intelligence platform**

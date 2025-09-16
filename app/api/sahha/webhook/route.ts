@@ -560,7 +560,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Generate demo webhook data for testing
-function generateDemoWebhookData() {
+async function generateDemoWebhookData() {
   const profiles: any[] = [];
   const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
   const archetypeTypes = {
@@ -659,6 +659,32 @@ function generateDemoWebhookData() {
     profiles.push(profile);
   }
   
+  // Assign departments from the last profile manager submission
+  // This reads from stored department assignments if available
+  const fs = (await import('fs')).promises;
+  const path = (await import('path')).default;
+  const deptFile = path.join(process.cwd(), 'data', 'department-assignments.json');
+  
+  try {
+    const deptData = await fs.readFile(deptFile, 'utf-8');
+    const assignments = JSON.parse(deptData);
+    
+    // Apply department assignments to profiles
+    profiles.forEach(profile => {
+      const profileId = profile.profileId || profile.externalId;
+      if (assignments[profileId]) {
+        profile.department = assignments[profileId];
+      } else {
+        profile.department = 'unassigned';
+      }
+    });
+  } catch (e) {
+    // If no assignments file, all profiles are unassigned
+    profiles.forEach(profile => {
+      profile.department = profile.department || 'unassigned';
+    });
+  }
+  
   return {
     profiles,
     stats: {
@@ -685,7 +711,7 @@ export async function GET(request: NextRequest) {
     
     // If demo mode is requested, return demo data
     if (mode === 'demo') {
-      const demoData = generateDemoWebhookData();
+      const demoData = await generateDemoWebhookData();
       return NextResponse.json({
         success: true,
         count: demoData.profiles.length,
@@ -698,6 +724,19 @@ export async function GET(request: NextRequest) {
     
     // Otherwise return real webhook data
     const data = await loadWebhookData();
+    
+    // Load department assignments from profile manager
+    const fs = (await import('fs')).promises;
+    const path = (await import('path')).default;
+    const deptFile = path.join(process.cwd(), 'data', 'department-assignments.json');
+    
+    let deptAssignments: any = {};
+    try {
+      const deptData = await fs.readFile(deptFile, 'utf-8');
+      deptAssignments = JSON.parse(deptData);
+    } catch (e) {
+      // No assignments file yet
+    }
     
     if (externalId) {
       // Return specific profile data
@@ -715,8 +754,19 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Return all webhook data
-    const profiles = Object.values(data);
+    // Return all webhook data with department assignments
+    const profiles = Object.values(data).map((profile: any) => {
+      const profileId = profile.profileId || profile.externalId || profile.id;
+      
+      // Apply department assignment or default to 'unassigned'
+      if (deptAssignments[profileId]) {
+        profile.department = deptAssignments[profileId];
+      } else if (!profile.department) {
+        profile.department = 'unassigned';
+      }
+      
+      return profile;
+    });
     
     return NextResponse.json({
       success: true,

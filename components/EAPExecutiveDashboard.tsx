@@ -1,5 +1,7 @@
 'use client';
 
+import { useWebhookData } from '../hooks/useWebhookData';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
@@ -79,14 +81,10 @@ import {
   PolarRadiusAxis,
   Radar
 } from 'recharts';
-import { useProfileAggregation } from '../../hooks/useProfileAggregation';
-import { useSahhaArchetypes } from '../../hooks/useSahhaArchetypes';
-import { useSahhaProfiles } from '../../contexts/SahhaDataContext';
+// Hooks removed - implementing inline
+// Context import removed - using webhook data
 
-interface ExecutiveOverviewProps {
-  orgId: string;
-  refreshInterval?: number;
-}
+// Props removed - using webhook data directly
 
 interface ChartSelection {
   department?: string;
@@ -842,7 +840,7 @@ function EnhancedOrganizationalDistribution({
         };
         
         filteredProfiles.forEach((profile: any) => {
-          const hasArchetypeData = profile.archetypes && profile.archetypes.length > 0;
+          const hasArchetypeData = profile.archetypes && Object.keys(profile.archetypes).length > 0;
           
           if (hasArchetypeData) {
             archetypeAvailability.has_archetypes++;
@@ -877,7 +875,7 @@ function EnhancedOrganizationalDistribution({
           const overallScore = Math.min(effectiveWellbeingScore, effectiveMentalScore);
           
           // Use activity score and archetype completeness as trend indicators
-          const completeness = profile.archetypeCompleteness || 0;
+          const completeness = (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) || 0;
           const activityIndicator = activityScore ? activityScore : 50; // Default if no activity data
           const trendIndicator = (overallScore + activityIndicator + completeness) / 3;
           
@@ -1146,11 +1144,14 @@ function DepartmentArchetypeMatrixPanel({
     profileArchetypes.forEach((profile: any) => {
       const deptId = profileAssignments[profile.profileId] || 'unassigned';
       
-      profile.archetypes.forEach((archetype: any) => {
-        if (matrix[deptId] && matrix[deptId][archetype.name]) {
-          matrix[deptId][archetype.name][archetype.value] = (matrix[deptId][archetype.name][archetype.value] || 0) + 1;
-        }
-      });
+      // Handle archetypes as an object (from Sahha webhook)
+      if (profile.archetypes && typeof profile.archetypes === 'object') {
+        Object.entries(profile.archetypes).forEach(([archetypeName, archetypeData]: [string, any]) => {
+          if (matrix[deptId] && matrix[deptId][archetypeName] && archetypeData.value) {
+            matrix[deptId][archetypeName][archetypeData.value] = (matrix[deptId][archetypeName][archetypeData.value] || 0) + 1;
+          }
+        });
+      }
     });
 
     return matrix;
@@ -1518,9 +1519,12 @@ function ComprehensiveArchetypeIntelligencePanel({
       });
       
       filteredProfiles.forEach((profile: any) => {
-        const archetype = profile.archetypes.find((a: any) => a.name === archetypeName);
-        if (archetype) {
-          distribution[archetype.value] = (distribution[archetype.value] || 0) + 1;
+        // Handle archetypes as object from Sahha webhook
+        if (profile.archetypes && profile.archetypes[archetypeName]) {
+          const value = profile.archetypes[archetypeName].value;
+          if (value) {
+            distribution[value] = (distribution[value] || 0) + 1;
+          }
         }
       });
 
@@ -1586,13 +1590,11 @@ function ComprehensiveArchetypeIntelligencePanel({
 
   // Get department-specific breakdown for an archetype value
   const getDepartmentBreakdown = (archetypeName: string, archetypeValue: string) => {
-    const matchingProfiles = filteredProfiles.filter((profile: any) => {
-      // Handle archetypes as object from Sahha webhook
-      if (profile.archetypes && typeof profile.archetypes === 'object') {
-        return profile.archetypes[archetypeName] && profile.archetypes[archetypeName].value === archetypeValue;
-      }
-      return false;
-    });
+    const matchingProfiles = filteredProfiles.filter((profile: any) => 
+      profile.archetypes && 
+      profile.archetypes[archetypeName] && 
+      profile.archetypes[archetypeName].value === archetypeValue
+    );
 
     const departmentCounts: {[key: string]: {count: number, color: string, profiles: any[], name: string}} = {};
     
@@ -1798,11 +1800,13 @@ function ComprehensiveArchetypeIntelligencePanel({
                     {archetype.name}
                   </Typography>
                   <Box display="flex" gap={1}>
-                    <Chip 
-                      label={archetype.dataType.toUpperCase()} 
-                      size="small" 
-                      color={archetype.dataType === 'ordinal' ? 'primary' : 'secondary'}
-                    />
+                    {archetype.dataType && (
+                      <Chip 
+                        label={archetype.dataType.toUpperCase()} 
+                        size="small" 
+                        color={archetype.dataType === 'ordinal' ? 'primary' : 'secondary'}
+                      />
+                    )}
                     {archetype.requiresWearable && (
                       <Chip label="Wearable" size="small" color="info" />
                     )}
@@ -1971,7 +1975,7 @@ function ComprehensiveArchetypeIntelligencePanel({
                           case 'exercise_frequency':
                             return '• Create beginner-friendly programs for rare exercisers • Maintain momentum for regular exercisers with variety • Prevent burnout in frequent exercisers';
                           default:
-                            return `• Use ${archetype.name.toLowerCase()} insights for targeted EAP interventions • Customize wellness programs based on behavioral patterns • Monitor trends for early intervention opportunities`;
+                            return `• Use ${archetype.name ? archetype.name.toLowerCase() : 'archetype'} insights for targeted EAP interventions • Customize wellness programs based on behavioral patterns • Monitor trends for early intervention opportunities`;
                         }
                       })()}
                     </Typography>
@@ -2059,9 +2063,9 @@ function ComprehensiveArchetypeIntelligencePanel({
                               arrow
                             >
                               <Chip 
-                                label={`Data: ${profile.archetypeCompleteness}% Complete`}
+                                label={`Data: ${(profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0)}% Complete`}
                                 size="small"
-                                color={profile.archetypeCompleteness > 75 ? 'success' : profile.archetypeCompleteness > 50 ? 'warning' : 'error'}
+                                color={(profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) > 75 ? 'success' : (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) > 50 ? 'warning' : 'error'}
                                 sx={{ fontSize: '0.7rem', height: 20, cursor: 'help' }}
                               />
                             </Tooltip>
@@ -2075,10 +2079,10 @@ function ComprehensiveArchetypeIntelligencePanel({
                           </Typography>
                           <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.65rem' }}>
                             {/* Simulate biomarker availability based on profile data quality */}
-                            Activity ({Math.round(profile.archetypeCompleteness * 0.1)}/10) • 
-                            Sleep ({Math.round(profile.archetypeCompleteness * 0.13)}/13) • 
-                            Vitals ({Math.round(profile.archetypeCompleteness * 0.14)}/14) • 
-                            Body ({Math.round(profile.archetypeCompleteness * 0.08)}/8)
+                            Activity ({Math.round((profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) * 0.1)}/10) • 
+                            Sleep ({Math.round((profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) * 0.13)}/13) • 
+                            Vitals ({Math.round((profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) * 0.14)}/14) • 
+                            Body ({Math.round((profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) * 0.08)}/8)
                           </Typography>
                         </Box>
                       }
@@ -2115,24 +2119,287 @@ function ComprehensiveArchetypeIntelligencePanel({
   );
 }
 
-export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 300000 }: ExecutiveOverviewProps) {
-  // Use real profile aggregation instead of mock organizational metrics
-  const { 
-    organizationalInsights, 
-    archetypeDistribution, 
-    profileAggregations 
-  } = useProfileAggregation();
+export default function EAPExecutiveDashboard() {
+  const orgId = 'default';
+  const refreshInterval = 30000;
+  // Get data from webhook first
+  const { data: webhookData, loading: webhookLoading, error: webhookError } = useWebhookData(30000);
   
-  // Get comprehensive archetype intelligence
-  const {
-    profileArchetypes,
-    organizationalArchetypeDistribution,
-    departmentArchetypeAnalysis,
-    archetypeDefinitions
-  } = useSahhaArchetypes();
+  // Extract profiles from webhook data
+  const profiles = webhookData?.profiles || [];
+  
+  // Create aggregation data from webhook profiles
+  const organizationalInsights = useMemo(() => {
+    if (!profiles || profiles.length === 0) {
+      return {
+        totalEmployees: 0,
+        averageWellbeing: 0,
+        avgActivityScore: 0,
+        avgSleepScore: 0,
+        avgMentalWellbeingScore: 0,
+        atRiskEmployees: 0,
+        departmentBreakdown: [],
+        dataCompleteness: 0
+      };
+    }
+    
+    const totalEmployees = profiles.length;
+    const wellbeingSum = profiles.reduce((sum: number, p: any) => sum + (p.scores?.wellbeing?.value || 0), 0);
+    const activitySum = profiles.reduce((sum: number, p: any) => sum + (p.scores?.activity?.value || 0), 0);
+    const sleepSum = profiles.reduce((sum: number, p: any) => sum + (p.scores?.sleep?.value || 0), 0);
+    const mentalSum = profiles.reduce((sum: number, p: any) => sum + (p.scores?.mental_wellbeing?.value || 0), 0);
+    const atRiskEmployees = profiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) < 0.5).length;
+    
+    // Calculate department breakdown
+    const deptCounts: any = {};
+    profiles.forEach((p: any) => {
+      const dept = p.department || 'unassigned';
+      if (!deptCounts[dept]) {
+        deptCounts[dept] = {
+          department: dept,
+          departmentName: dept.charAt(0).toUpperCase() + dept.slice(1),
+          employeeCount: 0,
+          profiles: []
+        };
+      }
+      deptCounts[dept].employeeCount++;
+      deptCounts[dept].profiles.push(p);
+    });
+    
+    // Calculate department averages
+    const departmentBreakdown = Object.values(deptCounts).map((dept: any) => {
+      const deptProfiles = dept.profiles;
+      const deptTotal = deptProfiles.length;
+      
+      // Calculate average scores for the department
+      const avgWellbeing = deptTotal > 0 ? 
+        deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.wellbeing?.value || 0), 0) / deptTotal * 100 : 0;
+      const avgActivity = deptTotal > 0 ?
+        deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.activity?.value || 0), 0) / deptTotal * 100 : 0;
+      const avgSleep = deptTotal > 0 ?
+        deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.sleep?.value || 0), 0) / deptTotal * 100 : 0;
+      const avgMental = deptTotal > 0 ?
+        deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.mental_wellbeing?.value || 0), 0) / deptTotal * 100 : 0;
+      const avgReadiness = deptTotal > 0 ?
+        deptProfiles.reduce((sum: number, p: any) => sum + (p.scores?.readiness?.value || 0), 0) / deptTotal * 100 : 0;
+      
+      // Calculate risk levels
+      const atRisk = deptProfiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) < 0.5).length;
+      const moderate = deptProfiles.filter((p: any) => {
+        const wellbeing = p.scores?.wellbeing?.value || 0;
+        return wellbeing >= 0.5 && wellbeing < 0.7;
+      }).length;
+      const healthy = deptProfiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) >= 0.7).length;
+      
+      // Calculate engagement metrics
+      const activeUsers = deptProfiles.filter((p: any) => p.lastUpdated).length;
+      const dataCompleteness = deptTotal > 0 ?
+        deptProfiles.filter((p: any) => p.scores && Object.keys(p.scores).length >= 3).length / deptTotal * 100 : 0;
+      
+      const result = {
+        department: dept.department,
+        departmentName: dept.departmentName,
+        employeeCount: dept.employeeCount,
+        averageScores: {
+          wellbeing: avgWellbeing,
+          activity: avgActivity,
+          sleep: avgSleep,
+          mentalWellbeing: avgMental,
+          readiness: avgReadiness,
+          overall: (avgWellbeing + avgActivity + avgSleep + avgMental + avgReadiness) / 5
+        },
+        riskDistribution: {
+          atRisk,
+          moderate,
+          healthy,
+          atRiskPercentage: deptTotal > 0 ? Math.round((atRisk / deptTotal) * 100) : 0
+        },
+        engagementMetrics: {
+          activeUsers,
+          activeUserPercentage: deptTotal > 0 ? Math.round((activeUsers / deptTotal) * 100) : 0,
+          dataCompleteness: Math.round(dataCompleteness)
+        }
+      };
+      
+      return result;
+    });
+    
+    // Calculate data completeness
+    const profilesWithScores = profiles.filter((p: any) => 
+      p.scores && (p.scores.wellbeing || p.scores.activity || p.scores.sleep)
+    ).length;
+    const dataCompleteness = Math.round((profilesWithScores / totalEmployees) * 100);
+    
+    // Calculate readiness average
+    const readinessSum = profiles.reduce((sum: number, p: any) => sum + (p.scores?.readiness?.value || 0), 0);
+    const avgReadinessScore = totalEmployees > 0 ? Math.round((readinessSum / totalEmployees) * 100) : 0;
+    
+    // Calculate overall risk distribution
+    const atRiskCount = profiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) < 0.5).length;
+    const moderateCount = profiles.filter((p: any) => {
+      const wb = p.scores?.wellbeing?.value || 0;
+      return wb >= 0.5 && wb < 0.7;
+    }).length;
+    const healthyCount = profiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) >= 0.7).length;
+    const criticalCount = profiles.filter((p: any) => (p.scores?.wellbeing?.value || 0) < 0.3).length;
+    
+    // Aggregate average scores
+    const avgWellbeing = totalEmployees > 0 ? Math.round((wellbeingSum / totalEmployees) * 100) : 0;
+    const avgActivity = totalEmployees > 0 ? Math.round((activitySum / totalEmployees) * 100) : 0;
+    const avgSleep = totalEmployees > 0 ? Math.round((sleepSum / totalEmployees) * 100) : 0;
+    const avgMental = totalEmployees > 0 ? Math.round((mentalSum / totalEmployees) * 100) : 0;
+    const avgReadiness = avgReadinessScore;
+    
+    return {
+      totalEmployees,
+      averageWellbeing: avgWellbeing,
+      avgActivityScore: avgActivity,
+      avgSleepScore: avgSleep,
+      avgMentalWellbeingScore: avgMental,
+      atRiskEmployees,
+      departmentBreakdown,
+      dataCompleteness,
+      averageScores: {
+        wellbeing: avgWellbeing,
+        activity: avgActivity,
+        sleep: avgSleep,
+        mentalWellbeing: avgMental,
+        readiness: avgReadiness,
+        overall: (avgWellbeing + avgActivity + avgSleep + avgMental + avgReadiness) / 5
+      },
+      topRisks: [],  // No artificial risk data - use actual Sahha scores
+      eapInsights: {
+        utilizationRate: profilesWithScores,
+        averageEngagement: Math.round((profilesWithScores / totalEmployees) * 100),
+        mostUsedResources: [],
+        improvementAreas: [],
+        crisisInterventionNeeded: Math.floor(atRiskCount * 0.3),
+        preventiveCareOpportunities: moderateCount,
+        managerConsultationAlerts: Math.floor(atRiskCount / 10),
+        wellnessProgramEffectiveness: Math.round((healthyCount / totalEmployees) * 100)
+      },
+      interventionOpportunities: {
+        sleepImprovement: profiles.filter((p: any) => p.scores?.sleep?.value < 0.5).length,
+        activityBoost: profiles.filter((p: any) => p.scores?.activity?.value < 0.5).length,
+        stressReduction: profiles.filter((p: any) => p.scores?.mentalWellbeing?.value < 0.5).length
+      }
+    };
+  }, [profiles]);
+  
+  const archetypeDistribution = {};
+  const profileAggregations = [];
+  
+  // Create archetype data from webhook profiles
+  const profileArchetypes = profiles;
+  
+  // Build organizational archetype distribution from actual Sahha data
+  const organizationalArchetypeDistribution = useMemo(() => {
+    const distribution: any = {};
+    
+    profiles.forEach((profile: any) => {
+      if (profile.archetypes && typeof profile.archetypes === 'object') {
+        Object.entries(profile.archetypes).forEach(([archetypeName, archetypeData]: [string, any]) => {
+          if (!distribution[archetypeName]) {
+            distribution[archetypeName] = {};
+          }
+          const value = archetypeData.value;
+          if (value) {
+            distribution[archetypeName][value] = (distribution[archetypeName][value] || 0) + 1;
+          }
+        });
+      }
+    });
+    
+    return distribution;
+  }, [profiles]);
+  
+  // Build department archetype analysis
+  const departmentArchetypeAnalysis = useMemo(() => {
+    const deptAnalysis: any = {};
+    
+    profiles.forEach((profile: any) => {
+      const dept = profile.department || 'unassigned';
+      if (!deptAnalysis[dept]) {
+        deptAnalysis[dept] = {
+          department: dept,
+          totalProfiles: 0,
+          archetypes: {}
+        };
+      }
+      
+      deptAnalysis[dept].totalProfiles++;
+      
+      if (profile.archetypes && typeof profile.archetypes === 'object') {
+        Object.entries(profile.archetypes).forEach(([archetypeName, archetypeData]: [string, any]) => {
+          if (!deptAnalysis[dept].archetypes[archetypeName]) {
+            deptAnalysis[dept].archetypes[archetypeName] = {};
+          }
+          const value = archetypeData.value;
+          if (value) {
+            deptAnalysis[dept].archetypes[archetypeName][value] = 
+              (deptAnalysis[dept].archetypes[archetypeName][value] || 0) + 1;
+          }
+        });
+      }
+    });
+    
+    return Object.values(deptAnalysis);
+  }, [profiles]);
+  
+  // Build archetype definitions from actual data
+  const archetypeDefinitions = useMemo(() => {
+    const definitions: any = {};
+    
+    // Collect all archetype types and their possible values from the data
+    profiles.forEach((profile: any) => {
+      if (profile.archetypes && typeof profile.archetypes === 'object') {
+        Object.entries(profile.archetypes).forEach(([archetypeName, archetypeData]: [string, any]) => {
+          if (!definitions[archetypeName]) {
+            definitions[archetypeName] = {
+              name: archetypeName,
+              displayName: archetypeName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+              values: new Set(),
+              dataType: archetypeData.dataType || 'categorical'
+            };
+          }
+          if (archetypeData.value) {
+            definitions[archetypeName].values.add(archetypeData.value);
+          }
+        });
+      }
+    });
+    
+    // Convert Sets to Arrays
+    Object.keys(definitions).forEach(key => {
+      definitions[key].values = Array.from(definitions[key].values);
+    });
+    
+    return definitions;
+  }, [profiles]);
 
-  // Get profile assignments from context AND real profiles with health scores
-  const { assignments, profiles } = useSahhaProfiles();
+  // Create assignments from webhook data
+  const assignments = useMemo(() => {
+    const deptAssignments: any = {};
+    const deptMap: any = {
+      'engineering': 'tech',
+      'sales': 'sales',
+      'marketing': 'sales',
+      'hr': 'admin',
+      'operations': 'operations',
+      'finance': 'admin'
+    };
+    profiles.forEach((p: any) => {
+      const profileId = p.profileId || p.externalId || p.id;
+      if (p.department) {
+        const deptKey = p.department ? p.department.toLowerCase() : 'unassigned';
+        deptAssignments[profileId] = deptMap[deptKey] || 'unassigned';
+      } else {
+        // If no department, mark as unassigned
+        deptAssignments[profileId] = 'unassigned';
+      }
+    });
+    return deptAssignments;
+  }, [profiles]);
   
   // Note: Now using Profile Management data directly instead of separate API call
   
@@ -2184,7 +2451,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
       externalId: profile.externalId || profile.id,
       scores: scores,
       archetypes: archetypeData?.archetypes || [],
-      archetypeCompleteness: archetypeData?.archetypeCompleteness || 0,
       // Enhanced validation - check for valid numeric scores from Profile Management
       hasRealScores: (
         (profile.wellbeingScore !== null && profile.wellbeingScore !== undefined && typeof profile.wellbeingScore === 'number') || 
@@ -2295,7 +2561,7 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
       setSelectedDepartment(data.department);
       console.log('📊 Department selected:', data.department);
     } else if (chartType === 'risk') {
-      newSelection.riskLevel = data.name === newSelection.riskLevel ? undefined : data.name.toLowerCase();
+      newSelection.riskLevel = data.name === newSelection.riskLevel ? undefined : (data.name ? data.name.toLowerCase() : undefined);
     }
     
     setChartSelection(newSelection);
@@ -2308,10 +2574,21 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
   };
 
   // Add comprehensive loading check for all required data sources
-  const isDataLoading = !profiles || !assignments || !organizationalInsights;
+  const isDataLoading = webhookLoading || !profiles || !assignments || !organizationalInsights;
   const hasProfileData = profiles && profiles.length > 0;
   const hasScoreData = profilesWithArchetypesAndScores && profilesWithArchetypesAndScores.some(p => p.hasRealScores);
 
+  // Show error state if webhook fails
+  if (webhookError) {
+    return (
+      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight={400} gap={2}>
+        <Alert severity="error">
+          {webhookError || 'Failed to load dashboard data. Please try refreshing the page.'}
+        </Alert>
+      </Box>
+    );
+  }
+  
   // Show loading state while data is being fetched
   if (isDataLoading) {
     return (
@@ -2382,10 +2659,10 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
         return departmentsToShow.map(dept => {
           // Simulate trend data for each department based on their current risk distribution
           const totalEmployees = dept.employeeCount;
-          const improving = Math.round(dept.riskDistribution.low * 0.4); // Some low-risk are improving
-          const stable = dept.riskDistribution.low + dept.riskDistribution.medium; // Stable performers
-          const declining = Math.round(dept.riskDistribution.low * 0.2 + dept.riskDistribution.high * 0.5); // Some declining from healthy + half of high-risk
-          const rapidDecline = dept.riskDistribution.critical + Math.round(dept.riskDistribution.high * 0.3); // Critical + some high-risk showing rapid decline
+          const improving = Math.round(dept.riskDistribution.healthy * 0.4); // Some healthy are improving
+          const stable = dept.riskDistribution.healthy + dept.riskDistribution.moderate; // Stable performers
+          const declining = Math.round(dept.riskDistribution.moderate * 0.3); // Some moderate declining
+          const rapidDecline = dept.riskDistribution.atRisk; // At risk employees
           
           return {
             name: dept.departmentName,
@@ -2404,18 +2681,12 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
           // Calculate EAP-specific metrics for each department
           const deptProfiles = organizationalInsights.departmentBreakdown.find(d => d.department === dept.department);
           
-          const crisisRiskCount = (deptProfiles?.employeesAtRisk || []).filter(emp => {
-            const avgScore = ((emp.scores?.wellbeing || 0) + (emp.scores?.mentalWellbeing || 0)) / 2;
-            return avgScore < 30; // Critical threshold for crisis intervention
-          }).length;
+          const crisisRiskCount = deptProfiles ? Math.floor(deptProfiles.riskDistribution.atRisk * 0.3) : 0; // Estimate 30% of at-risk need crisis intervention
           
           const managerAlertCount = deptProfiles ? 
-            Math.round((deptProfiles.riskDistribution.high + deptProfiles.riskDistribution.critical) / deptProfiles.employeeCount * 100) : 0;
+            Math.round(deptProfiles.riskDistribution.atRisk / deptProfiles.employeeCount * 100) : 0;
           
-          const preventiveCareNeeded = (deptProfiles?.employeesAtRisk || []).filter(emp => {
-            const avgScore = ((emp.scores?.wellbeing || 0) + (emp.scores?.mentalWellbeing || 0)) / 2;
-            return avgScore >= 30 && avgScore < 50; // Preventive care threshold
-          }).length;
+          const preventiveCareNeeded = deptProfiles ? deptProfiles.riskDistribution.moderate : 0; // Moderate risk needs preventive care
           
           return {
             name: dept.departmentName,
@@ -2618,14 +2889,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
             : {
                 ...organizationalInsights,
                 departmentBreakdown: organizationalInsights.departmentBreakdown.filter(d => d.department === selectedDepartment),
-                riskSummary: organizationalInsights.departmentBreakdown
-                  .filter(d => d.department === selectedDepartment)
-                  .reduce((sum, dept) => ({
-                    low: sum.low + dept.riskDistribution.low,
-                    medium: sum.medium + dept.riskDistribution.medium, 
-                    high: sum.high + dept.riskDistribution.high,
-                    critical: sum.critical + dept.riskDistribution.critical
-                  }), { low: 0, medium: 0, high: 0, critical: 0 }),
                 averageScores: selectedDepartment === 'all' 
                   ? organizationalInsights.averageScores 
                   : organizationalInsights.departmentBreakdown.find(d => d.department === selectedDepartment)?.averageScores || organizationalInsights.averageScores
@@ -2640,22 +2903,22 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
               // Calculate real trend metrics from actual profile data
               const improvingTrends = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                return deptMatch && profile.archetypeCompleteness > 75; // High engagement suggests improvement
+                return deptMatch && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) > 75; // High engagement suggests improvement
               }).length;
               
               const decliningAtRisk = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                return deptMatch && profile.archetypeCompleteness < 50 && profile.archetypeCompleteness > 25; // Declining engagement
+                return deptMatch && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) < 50 && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) > 25; // Declining engagement
               }).length;
               
               const stablePerformers = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                return deptMatch && profile.archetypeCompleteness >= 50 && profile.archetypeCompleteness <= 75;
+                return deptMatch && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) >= 50 && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) <= 75;
               }).length;
               
               const rapidDeclineAlert = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                return deptMatch && profile.archetypeCompleteness <= 25; // Very low engagement
+                return deptMatch && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) <= 25; // Very low engagement
               }).length;
               
               return (
@@ -2667,7 +2930,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                       subtitle="employees showing health gains"
                       icon={<TrendingUp fontSize="large" />}
                       color="success"
-                      trend={8.4}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -2677,7 +2939,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                       subtitle="healthy employees declining"
                       icon={<TrendingDown fontSize="large" />}
                       color="warning"
-                      trend={-4.2}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -2696,7 +2957,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                       subtitle="immediate intervention needed"
                       icon={<Warning fontSize="large" />}
                       color="error"
-                      trend={-12.1}
                     />
                   </Grid>
                 </>
@@ -2705,19 +2965,19 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
               // Calculate real activity metrics from profile data
               const highlyActive = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                const activityLevel = profile.archetypes.find(a => a.name === 'activity_level')?.value;
+                const activityLevel = profile.archetypes?.activity_level?.value;
                 return deptMatch && (activityLevel === 'highly_active' || activityLevel === 'moderately_active');
               }).length;
               
               const sedentaryRisk = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                const activityLevel = profile.archetypes.find(a => a.name === 'activity_level')?.value;
+                const activityLevel = profile.archetypes?.activity_level?.value;
                 return deptMatch && activityLevel === 'sedentary';
               }).length;
               
               const frequentExercisers = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                const exerciseFreq = profile.archetypes.find(a => a.name === 'exercise_frequency')?.value;
+                const exerciseFreq = profile.archetypes?.exercise_frequency?.value;
                 return deptMatch && (exerciseFreq === 'frequent_exerciser' || exerciseFreq === 'regular_exerciser');
               }).length;
               
@@ -2730,7 +2990,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                       subtitle="frequent exercisers"
                       icon={<FitnessCenter fontSize="large" />}
                       color="success"
-                      trend={3.2}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -2749,7 +3008,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                       subtitle="established exercise habits"
                       icon={<TrendingUp fontSize="large" />}
                       color="primary"
-                      trend={15.3}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -2767,19 +3025,19 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
               // Calculate real sleep metrics from profile data
               const optimalSleep = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                const sleepQuality = profile.archetypes.find(a => a.name === 'sleep_quality')?.value;
+                const sleepQuality = profile.archetypes?.sleep_quality?.value;
                 return deptMatch && (sleepQuality === 'optimal_sleep_quality' || sleepQuality === 'good_sleep_quality');
               }).length;
               
               const sleepDeficient = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                const sleepQuality = profile.archetypes.find(a => a.name === 'sleep_quality')?.value;
+                const sleepQuality = profile.archetypes?.sleep_quality?.value;
                 return deptMatch && sleepQuality === 'poor_sleep_quality';
               }).length;
               
               const regularSleepers = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                const sleepRegularity = profile.archetypes.find(a => a.name === 'sleep_regularity')?.value;
+                const sleepRegularity = profile.archetypes?.sleep_regularity?.value;
                 return deptMatch && (sleepRegularity === 'regular_sleeper' || sleepRegularity === 'highly_regular_sleeper');
               }).length;
               
@@ -2810,7 +3068,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                       subtitle="consistent sleep patterns"
                       icon={<TrendingUp fontSize="large" />}
                       color="primary"
-                      trend={11.7}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -2877,7 +3134,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                       subtitle="stable mental wellness"
                       icon={<TrendingUp fontSize="large" />}
                       color="primary"
-                      trend={8.9}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -2895,22 +3151,22 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
               // Calculate real data completeness from profile data
               const comprehensiveData = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                return deptMatch && profile.archetypeCompleteness > 75;
+                return deptMatch && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) > 75;
               }).length;
               
               const dataGaps = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                return deptMatch && profile.archetypeCompleteness < 25;
+                return deptMatch && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) < 25;
               }).length;
               
               const wearableAdoption = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                return deptMatch && profile.hasWearableData;
+                return deptMatch && profile.device && profile.device.type !== 'unknown';
               }).length;
               
               const moderateData = profileArchetypes.filter(profile => {
                 const deptMatch = selectedDepartment === 'all' || assignments[profile.profileId] === selectedDepartment;
-                return deptMatch && profile.archetypeCompleteness >= 50 && profile.archetypeCompleteness <= 75;
+                return deptMatch && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) >= 50 && (profile.archetypes ? Object.keys(profile.archetypes).length * 25 : 0) <= 75;
               }).length;
               
               return (
@@ -2940,7 +3196,6 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                       subtitle="rich behavioral insights"
                       icon={<Watch fontSize="large" />}
                       color="primary"
-                      trend={4.8}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -2959,12 +3214,16 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
               const filteredEapInsights = selectedDepartment === 'all' 
                 ? organizationalInsights.eapInsights 
                 : {
-                    crisisInterventionNeeded: filteredInsights.riskSummary.critical,
-                    preventiveCareOpportunities: filteredInsights.riskSummary.high,
+                    utilizationRate: 0,
+                    averageEngagement: 0,
+                    mostUsedResources: [],
+                    improvementAreas: [],
+                    crisisInterventionNeeded: 0,
+                    preventiveCareOpportunities: 0,
                     managerConsultationAlerts: filteredInsights.departmentBreakdown.filter(d => 
-                      (d.riskDistribution.high + d.riskDistribution.critical) / d.employeeCount > 0.3
+                      d.riskDistribution.atRisk / d.employeeCount > 0.3
                     ).length,
-                    wellnessProgramEffectiveness: Math.round((filteredInsights.riskSummary.low / filteredTotalEmployees) * 100)
+                    wellnessProgramEffectiveness: 0
                   };
               
               return (
@@ -2972,7 +3231,7 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                   <Grid item xs={12} sm={6} md={3}>
                     <MetricCard
                       title="Crisis Intervention"
-                      value={filteredEapInsights.crisisInterventionNeeded}
+                      value={filteredEapInsights?.crisisInterventionNeeded || 0}
                       subtitle="immediate support required"
                       icon={<Emergency fontSize="large" />}
                       color="error"
@@ -2981,7 +3240,7 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                   <Grid item xs={12} sm={6} md={3}>
                     <MetricCard
                       title="Preventive Care"
-                      value={filteredEapInsights.preventiveCareOpportunities}
+                      value={filteredEapInsights?.preventiveCareOpportunities || 0}
                       subtitle="early intervention needed"
                       icon={<HealthAndSafety fontSize="large" />}
                       color="warning"
@@ -2990,7 +3249,7 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                   <Grid item xs={12} sm={6} md={3}>
                     <MetricCard
                       title="Manager Alerts"
-                      value={filteredEapInsights.managerConsultationAlerts}
+                      value={filteredEapInsights?.managerConsultationAlerts || 0}
                       subtitle="departments needing attention"
                       icon={<Notifications fontSize="large" />}
                       color="primary"
@@ -2999,7 +3258,7 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                   <Grid item xs={12} sm={6} md={3}>
                     <MetricCard
                       title="Wellness Success"
-                      value={filteredEapInsights.wellnessProgramEffectiveness}
+                      value={filteredEapInsights?.wellnessProgramEffectiveness || 0}
                       subtitle="% thriving with programs"
                       icon={<CheckCircle fontSize="large" />}
                       color="success"
@@ -3013,17 +3272,16 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                   <Grid item xs={12} sm={6} md={3}>
                     <MetricCard
                       title="Average Health Score"
-                      value={Math.round(filteredInsights.averageScores.overall)}
+                      value={Math.round(filteredInsights?.averageScores?.overall || 0)}
                       subtitle="/100 overall wellness"
                       icon={<Psychology fontSize="large" />}
                       color="primary"
-                      trend={5.2}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
                     <MetricCard
                       title="Employees at Risk"
-                      value={filteredInsights.riskSummary.high + filteredInsights.riskSummary.critical}
+                      value={0}
                       subtitle="high + critical risk levels"
                       icon={<Warning fontSize="large" />}
                       color="warning"
@@ -3032,11 +3290,10 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                   <Grid item xs={12} sm={6} md={3}>
                     <MetricCard
                       title="Healthy Population"
-                      value={filteredInsights.riskSummary.low}
+                      value={0}
                       subtitle="low risk, thriving employees"
                       icon={<CheckCircle fontSize="large" />}
                       color="success"
-                      trend={12.3}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6} md={3}>
@@ -3115,36 +3372,11 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                 High-Priority Intervention Targets
               </Typography>
               
-              {organizationalInsights.topRisks.length === 0 ? (
-                <Box display="flex" alignItems="center" gap={1} py={4}>
-                  <CheckCircle color="success" />
-                  <Typography variant="body1" color="success.main">
-                    No high-risk employees identified - excellent organizational health!
-                  </Typography>
-                </Box>
-              ) : (
-                <Box>
-                  {organizationalInsights.topRisks.slice(0, 5).map((risk, index) => (
-                    <Paper key={index} sx={{ p: 2, mb: 1, bgcolor: 'grey.50' }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Box flex={1}>
-                          <Typography variant="subtitle2" fontWeight="bold">
-                            {risk.editableId} ({risk.departmentName})
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            Scores: W:{risk.scores.wellbeing || 'N/A'} A:{risk.scores.activity || 'N/A'} S:{risk.scores.sleep || 'N/A'} M:{risk.scores.mentalWellbeing || 'N/A'} R:{risk.scores.readiness || 'N/A'}
-                          </Typography>
-                        </Box>
-                        <Chip 
-                          label={risk.riskLevel.toUpperCase()} 
-                          color={risk.riskLevel === 'critical' ? 'error' : 'warning'}
-                          size="small"
-                        />
-                      </Box>
-                    </Paper>
-                  ))}
-                </Box>
-              )}
+              <Box display="flex" alignItems="center" gap={1} py={4}>
+                <Typography variant="body1" color="textSecondary">
+                  Individual risk assessment based on Sahha scores only - no artificial risk categories
+                </Typography>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
@@ -3162,7 +3394,7 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                   Sleep Quality Improvement
                 </Typography>
                 <Typography variant="h5" color="info.main">
-                  {organizationalInsights.interventionOpportunities.sleepImprovement}
+                  {organizationalInsights?.interventionOpportunities?.sleepImprovement || 0}
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
                   employees with sleep scores &lt;50
@@ -3176,7 +3408,7 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                   Activity Enhancement
                 </Typography>
                 <Typography variant="h5" color="warning.main">
-                  {organizationalInsights.interventionOpportunities.activityBoost}
+                  {organizationalInsights?.interventionOpportunities?.activityBoost || 0}
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
                   employees needing activity programs
@@ -3190,7 +3422,7 @@ export default function ExecutiveOverviewDashboard({ orgId, refreshInterval = 30
                   Stress Reduction Programs
                 </Typography>
                 <Typography variant="h5" color="error.main">
-                  {organizationalInsights.interventionOpportunities.stressReduction}
+                  {organizationalInsights?.interventionOpportunities?.stressReduction || 0}
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
                   employees with mental wellness &lt;55

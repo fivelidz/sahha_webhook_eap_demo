@@ -5,11 +5,11 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import DashboardLayout from '@/components/DashboardLayout';
 import ProfileManagerWebhook from '@/components/ProfileManagerWebhook';
-import ExecutiveDashboardImproved from '@/components/ExecutiveDashboardImproved';
-import BehavioralIntelligenceProper from '@/components/BehavioralIntelligenceProper';
-import DepartmentAnalysisEnhanced from '@/components/DepartmentAnalysisEnhanced';
-import AnalyticsView from '@/components/AnalyticsView';
+import ExecutiveDashboardOriginal from '@/components/ExecutiveDashboardOriginal';
+import BehavioralIntelligenceEAP from '@/components/BehavioralIntelligenceEAP';
+import DepartmentAnalysisEAP from '@/components/DepartmentAnalysisEAP';
 import { SahhaDataProvider } from '@/contexts/SahhaDataContext';
+import { CrossFilterProvider } from '@/contexts/CrossFilterContext';
 import { Box, Typography } from '@mui/material';
 
 const lightTheme = createTheme({
@@ -57,13 +57,11 @@ export default function DashboardPage() {
       case 'profile-manager':
         return <ProfileManagerWebhook darkMode={darkMode} />;
       case 'executive':
-        return <ExecutiveDashboardImproved orgId="default" />;
+        return <ExecutiveDashboardOriginal orgId="default" />;
       case 'behavioral':
-        return <BehavioralIntelligenceProper orgId="default" />;
+        return <BehavioralIntelligenceEAP orgId="default" />;
       case 'department':
-        return <DepartmentAnalysisEnhanced orgId="default" />;
-      case 'analytics':
-        return <AnalyticsView />;
+        return <DepartmentAnalysisEAP />;
       case 'settings':
         return (
           <Box sx={{ p: 3 }}>
@@ -80,6 +78,7 @@ export default function DashboardPage() {
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
       <SahhaDataProvider>
+        <CrossFilterProvider>
         <DashboardLayout
           darkMode={darkMode}
           onDarkModeToggle={handleDarkModeToggle}
@@ -88,6 +87,7 @@ export default function DashboardPage() {
         >
           {renderPage()}
         </DashboardLayout>
+        </CrossFilterProvider>
       </SahhaDataProvider>
     </ThemeProvider>
   );

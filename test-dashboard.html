@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Component Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #3b82f6;
+            border-radius: 4px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin: 5px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #4ade80;
+            color: white;
+        }
+        .status.error {
+            background: #f87171;
+            color: white;
+        }
+        .status.pending {
+            background: #fbbf24;
+            color: black;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .navigation {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .nav-button {
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .nav-button:hover {
+            background: #2563eb;
+        }
+        .nav-button.active {
+            background: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧬 Sahha Wellness Dashboard - Component Test</h1>
+        
+        <div class="test-section">
+            <h2>Dashboard Status</h2>
+            <p>Base URL: <a href="http://localhost:3000/dashboard" target="_blank">http://localhost:3000/dashboard</a></p>
+            <p>API Endpoint: <a href="http://localhost:3000/api/sahha/webhook" target="_blank">http://localhost:3000/api/sahha/webhook</a></p>
+            <div id="status-container">
+                <span class="status pending">Checking...</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Component Navigation Test</h2>
+            <div class="navigation">
+                <button class="nav-button" onclick="navigateTo('profile-manager')">Profile Manager</button>
+                <button class="nav-button" onclick="navigateTo('executive')">Executive Dashboard</button>
+                <button class="nav-button" onclick="navigateTo('behavioral')">Behavioral Intelligence</button>
+                <button class="nav-button" onclick="navigateTo('department')">Department Analysis</button>
+            </div>
+            <p id="current-view">Current View: Loading...</p>
+        </div>
+
+        <div class="test-section">
+            <h2>Live Dashboard Preview</h2>
+            <iframe id="dashboard-frame" src="http://localhost:3000/dashboard"></iframe>
+        </div>
+
+        <div class="test-section">
+            <h2>Component Checklist</h2>
+            <ul>
+                <li>✅ Executive Dashboard - DepartmentMatrix component added</li>
+                <li>✅ Behavioral Intelligence Overview - DepartmentArchetypeAnalysisInteractive</li>
+                <li>✅ Behavioral Intelligence Individual - Table view maintained</li>
+                <li>✅ Behavioral Intelligence Department - DepartmentAnalysisTab component</li>
+                <li>✅ Department Analysis Page - DepartmentAnalysisTab with 3 views</li>
+                <li>✅ Horizontal stacked bars - layout="horizontal" configured</li>
+                <li>✅ Interactive filtering - Click to filter functionality</li>
+                <li>✅ Department Matrix - Expandable rows with detailed metrics</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>Expected Behavior</h2>
+            <ol>
+                <li><strong>Behavioral Intelligence Tab (Overview):</strong>
+                    <ul>
+                        <li>Should show 4 horizontal stacked bar charts</li>
+                        <li>Y-axis: Archetype types (e.g., "Highly Active", "Sedentary")</li>
+                        <li>X-axis: Population count</li>
+                        <li>Stacked segments: Different departments in different colors</li>
+                        <li>Click on any department segment to filter all charts</li>
+                    </ul>
+                </li>
+                <li><strong>Department Analysis Tab:</strong>
+                    <ul>
+                        <li>Should have 3 view tabs: Archetype Distribution, Performance Matrix, Combined View</li>
+                        <li>Archetype Distribution: Same horizontal stacked bars as Behavioral Intelligence</li>
+                        <li>Performance Matrix: Table with expandable rows showing detailed metrics</li>
+                        <li>Combined View: Both charts and matrix together</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Check dashboard status
+        async function checkStatus() {
+            const statusContainer = document.getElementById('status-container');
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/sahha/webhook');
+                const data = await response.json();
+                
+                if (data && data.count) {
+                    statusContainer.innerHTML = `
+                        <span class="status success">Dashboard Active</span>
+                        <span class="status success">${data.count} Profiles Loaded</span>
+                        <span class="status success">API Working</span>
+                    `;
+                } else {
+                    statusContainer.innerHTML = '<span class="status error">API Not Responding Properly</span>';
+                }
+            } catch (error) {
+                statusContainer.innerHTML = '<span class="status error">Dashboard Not Accessible</span>';
+            }
+        }
+
+        // Navigate to different views
+        function navigateTo(view) {
+            const frame = document.getElementById('dashboard-frame');
+            const currentView = document.getElementById('current-view');
+            
+            // This would need to be implemented with actual navigation
+            // For now, just update the display
+            currentView.textContent = `Current View: ${view}`;
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+            
+            console.log(`Navigating to ${view} - Manual navigation required in iframe`);
+            alert(`Please manually click on "${view}" in the sidebar of the dashboard below to test that component.`);
+        }
+
+        // Check status on load
+        checkStatus();
+        
+        // Refresh status every 5 seconds
+        setInterval(checkStatus, 5000);
+    </script>
+</body>
+</html>

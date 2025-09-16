@@ -76,7 +76,7 @@ const COLORS = {
   secondary: '#8b5cf6'
 };
 
-type ViewingCriteria = 'department_comparison' | 'overall_health' | 'score_breakdown' | 'trends' | 'sub_scores' | 'archetype_distribution' | 'department_matrix';
+type ViewingCriteria = 'department_comparison' | 'overall_health' | 'score_breakdown' | 'trends' | 'archetype_distribution' | 'department_matrix';
 
 export default function ExecutiveDashboardImproved({ orgId = 'default' }: ExecutiveDashboardProps) {
   const [demoMode, setDemoMode] = useState(false);
@@ -133,6 +133,88 @@ export default function ExecutiveDashboardImproved({ orgId = 'default' }: Execut
     };
   }, [data]);
 
+  // Calculate archetype distribution data
+  const archetypeData = useMemo(() => {
+    if (!data || !data.profiles) return [];
+    
+    const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
+    const archetypeTypes = {
+      activity: ['sedentary', 'lightly_active', 'moderately_active', 'highly_active'],
+      exercise: ['rare_exerciser', 'occasional_exerciser', 'regular_exerciser', 'frequent_exerciser'],
+      sleep: ['poor_sleeper', 'fair_sleeper', 'good_sleeper', 'excellent_sleeper'],
+      mental: ['poor_mental_wellness', 'fair_mental_wellness', 'good_mental_wellness', 'optimal_mental_wellness']
+    };
+    
+    // Build distribution by department
+    const distribution = departments.map(dept => {
+      const deptProfiles = data.profiles.filter((p: any) => p.department === dept);
+      const result: any = { department: dept, total: deptProfiles.length };
+      
+      // Count archetypes for this department
+      Object.entries(archetypeTypes).forEach(([category, types]) => {
+        types.forEach(type => {
+          result[type] = deptProfiles.filter((p: any) => {
+            // Check archetype values from webhook data
+            if (!p.archetypes) return false;
+            
+            // Check each archetype category
+            const activityArchetype = p.archetypes.activity_level?.value;
+            const exerciseArchetype = p.archetypes.exercise_frequency?.value;
+            const sleepArchetype = p.archetypes.sleep_pattern?.value;
+            const mentalArchetype = p.archetypes.mental_wellness?.value;
+            
+            return activityArchetype === type || 
+                   exerciseArchetype === type || 
+                   sleepArchetype === type || 
+                   mentalArchetype === type;
+          }).length;
+        });
+      });
+      
+      return result;
+    });
+    
+    return distribution;
+  }, [data]);
+
+  // Calculate department matrix data
+  const matrixData = useMemo(() => {
+    if (!data || !data.profiles) return { heatmapData: [], tableData: [] };
+    
+    const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
+    const metrics = ['Activity', 'Exercise', 'Sleep', 'Mental', 'Wellbeing'];
+    
+    // Build heatmap data
+    const heatmapData: any[] = [];
+    const tableData: any[] = [];
+    
+    departments.forEach(dept => {
+      const deptProfiles = data.profiles.filter((p: any) => p.department === dept);
+      const deptRow: any = { department: dept, total: deptProfiles.length };
+      
+      metrics.forEach(metric => {
+        const scoreKey = metric.toLowerCase() === 'mental' ? 'mental_wellbeing' : metric.toLowerCase();
+        const avgScore = deptProfiles.reduce((acc: number, p: any) => {
+          const score = p.scores?.[scoreKey]?.value || 0.5;
+          return acc + score;
+        }, 0) / (deptProfiles.length || 1);
+        
+        heatmapData.push({
+          department: dept,
+          metric: metric,
+          value: Math.round(avgScore * 100),
+          count: deptProfiles.length
+        });
+        
+        deptRow[metric] = Math.round(avgScore * 100);
+      });
+      
+      tableData.push(deptRow);
+    });
+    
+    return { heatmapData, tableData };
+  }, [data]);
+
   // Render different views based on criteria
   const renderViewContent = () => {
     switch (viewingCriteria) {
@@ -144,8 +226,6 @@ export default function ExecutiveDashboardImproved({ orgId = 'default' }: Execut
         return renderDepartmentComparison();
       case 'trends':
         return renderTrends();
-      case 'sub_scores':
-        return renderSubScores();
       case 'archetype_distribution':
         return renderArchetypeDistribution();
       case 'department_matrix':
@@ -503,50 +583,6 @@ export default function ExecutiveDashboardImproved({ orgId = 'default' }: Execut
   );
 
   const renderArchetypeDistribution = () => {
-    // Get archetype data from webhook profiles
-    const archetypeData = useMemo(() => {
-      if (!data || !data.profiles) return [];
-      
-      const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
-      const archetypeTypes = {
-        activity: ['sedentary', 'lightly_active', 'moderately_active', 'highly_active'],
-        exercise: ['rare_exerciser', 'occasional_exerciser', 'regular_exerciser', 'frequent_exerciser'],
-        sleep: ['poor_sleeper', 'fair_sleeper', 'good_sleeper', 'excellent_sleeper'],
-        mental: ['poor_mental_wellness', 'fair_mental_wellness', 'good_mental_wellness', 'optimal_mental_wellness']
-      };
-      
-      // Build distribution by department
-      const distribution = departments.map(dept => {
-        const deptProfiles = data.profiles.filter(p => p.department === dept);
-        const result: any = { department: dept, total: deptProfiles.length };
-        
-        // Count archetypes for this department
-        Object.entries(archetypeTypes).forEach(([category, types]) => {
-          types.forEach(type => {
-            result[type] = deptProfiles.filter(p => {
-              // Check archetype values from webhook data
-              if (!p.archetypes) return false;
-              
-              // Check each archetype category
-              const activityArchetype = p.archetypes.activity_level?.value;
-              const exerciseArchetype = p.archetypes.exercise_frequency?.value;
-              const sleepArchetype = p.archetypes.sleep_pattern?.value;
-              const mentalArchetype = p.archetypes.mental_wellness?.value;
-              
-              return activityArchetype === type || 
-                     exerciseArchetype === type || 
-                     sleepArchetype === type || 
-                     mentalArchetype === type;
-            }).length;
-          });
-        });
-        
-        return result;
-      });
-      
-      return distribution;
-    }, [data]);
-    
     // Department colors for consistency
     const departmentColors: any = {
       'Engineering': '#2196f3',
@@ -694,43 +730,6 @@ export default function ExecutiveDashboardImproved({ orgId = 'default' }: Execut
   };
   
   const renderDepartmentMatrix = () => {
-    // Create department-by-archetype matrix
-    const matrixData = useMemo(() => {
-      if (!data || !data.profiles) return { heatmapData: [], tableData: [] };
-      
-      const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
-      const metrics = ['Activity', 'Exercise', 'Sleep', 'Mental', 'Wellbeing'];
-      
-      // Build heatmap data
-      const heatmapData: any[] = [];
-      const tableData: any[] = [];
-      
-      departments.forEach(dept => {
-        const deptProfiles = data.profiles.filter(p => p.department === dept);
-        const deptRow: any = { department: dept, total: deptProfiles.length };
-        
-        metrics.forEach(metric => {
-          const scoreKey = metric.toLowerCase() === 'mental' ? 'mental_wellbeing' : metric.toLowerCase();
-          const avgScore = deptProfiles.reduce((acc, p) => {
-            const score = p.scores?.[scoreKey]?.value || 0.5;
-            return acc + score;
-          }, 0) / (deptProfiles.length || 1);
-          
-          heatmapData.push({
-            department: dept,
-            metric: metric,
-            value: Math.round(avgScore * 100),
-            count: deptProfiles.length
-          });
-          
-          deptRow[metric] = Math.round(avgScore * 100);
-        });
-        
-        tableData.push(deptRow);
-      });
-      
-      return { heatmapData, tableData };
-    }, [data]);
     
     // Color scale for heatmap
     const getHeatmapColor = (value: number) => {
@@ -889,147 +888,6 @@ export default function ExecutiveDashboardImproved({ orgId = 'default' }: Execut
     );
   };
   
-  const renderSubScores = () => (
-    <Grid container spacing={3}>
-      {/* Sleep Sub-scores */}
-      <Grid item xs={12} md={6}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Sleep Component Breakdown
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={processedData.subScoreBreakdowns.sleep}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="component" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
-                <RechartsTooltip />
-                <Bar dataKey="score" fill="#9c27b0" />
-              </BarChart>
-            </ResponsiveContainer>
-            <Stack spacing={1} sx={{ mt: 2 }}>
-              {processedData.subScoreBreakdowns.sleep.map((item: any) => (
-                <Stack key={item.component} direction="row" justifyContent="space-between">
-                  <Typography variant="body2">{item.component}</Typography>
-                  <Typography variant="body2" fontWeight="bold">{item.score}/100</Typography>
-                </Stack>
-              ))}
-            </Stack>
-          </CardContent>
-        </Card>
-      </Grid>
-
-      {/* Activity Sub-scores */}
-      <Grid item xs={12} md={6}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Activity Component Breakdown
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={processedData.subScoreBreakdowns.activity}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="component" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
-                <RechartsTooltip />
-                <Bar dataKey="score" fill="#4caf50" />
-              </BarChart>
-            </ResponsiveContainer>
-            <Stack spacing={1} sx={{ mt: 2 }}>
-              {processedData.subScoreBreakdowns.activity.map((item: any) => (
-                <Stack key={item.component} direction="row" justifyContent="space-between">
-                  <Typography variant="body2">{item.component}</Typography>
-                  <Typography variant="body2" fontWeight="bold">{item.value}</Typography>
-                </Stack>
-              ))}
-            </Stack>
-          </CardContent>
-        </Card>
-      </Grid>
-
-      {/* Mental Wellbeing Sub-scores */}
-      <Grid item xs={12} md={6}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Mental Wellbeing Component Breakdown
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={processedData.subScoreBreakdowns.mental}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="component" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
-                <RechartsTooltip />
-                <Bar dataKey="score" fill="#2196f3" />
-              </BarChart>
-            </ResponsiveContainer>
-            <Stack spacing={1} sx={{ mt: 2 }}>
-              {processedData.subScoreBreakdowns.mental.map((item: any) => (
-                <Stack key={item.component} direction="row" justifyContent="space-between">
-                  <Typography variant="body2">{item.component}</Typography>
-                  <Typography variant="body2" fontWeight="bold">{item.score}/100</Typography>
-                </Stack>
-              ))}
-            </Stack>
-          </CardContent>
-        </Card>
-      </Grid>
-
-      {/* Readiness Sub-scores */}
-      <Grid item xs={12} md={6}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Readiness Component Breakdown
-            </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={processedData.subScoreBreakdowns.readiness}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="component" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
-                <RechartsTooltip />
-                <Bar dataKey="score" fill="#f44336" />
-              </BarChart>
-            </ResponsiveContainer>
-            <Stack spacing={1} sx={{ mt: 2 }}>
-              {processedData.subScoreBreakdowns.readiness.map((item: any) => (
-                <Stack key={item.component} direction="row" justifyContent="space-between">
-                  <Typography variant="body2">{item.component}</Typography>
-                  <Typography variant="body2" fontWeight="bold">{item.score}/100</Typography>
-                </Stack>
-              ))}
-            </Stack>
-          </CardContent>
-        </Card>
-      </Grid>
-
-      {/* Department Sub-score Comparison */}
-      <Grid item xs={12}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Department Sub-score Analysis
-            </Typography>
-            <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={processedData.departmentStats.subScores}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="department" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <RechartsTooltip />
-                <Legend />
-                <Bar yAxisId="left" dataKey="sleepDuration" fill="#9c27b0" name="Sleep Duration (h)" />
-                <Bar yAxisId="left" dataKey="sleepEfficiency" fill="#ab47bc" name="Sleep Efficiency %" />
-                <Bar yAxisId="left" dataKey="steps" fill="#4caf50" name="Steps (k)" />
-                <Bar yAxisId="left" dataKey="activeHours" fill="#66bb6a" name="Active Hours" />
-                <Line yAxisId="right" type="monotone" dataKey="overallScore" stroke="#ff9800" name="Overall Score" strokeWidth={3} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </Grid>
-    </Grid>
-  );
 
   if (loading) {
     return (
@@ -1088,7 +946,6 @@ export default function ExecutiveDashboardImproved({ orgId = 'default' }: Execut
                 <MenuItem value="score_breakdown">Score Breakdown</MenuItem>
                 <MenuItem value="department_comparison">Department Comparison</MenuItem>
                 <MenuItem value="trends">Trends</MenuItem>
-                <MenuItem value="sub_scores">Sub-score Analysis</MenuItem>
                 <MenuItem value="archetype_distribution">Archetype Distribution</MenuItem>
                 <MenuItem value="department_matrix">Department Matrix</MenuItem>
               </Select>

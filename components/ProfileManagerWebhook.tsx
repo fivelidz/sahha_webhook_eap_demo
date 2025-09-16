@@ -717,10 +717,24 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
                       <Select
                         size="small"
                         value={assignments[profile.profileId] || 'unassigned'}
-                        onChange={(e) => setAssignments({
-                          ...assignments,
-                          [profile.profileId]: e.target.value
-                        })}
+                        onChange={async (e) => {
+                          const newAssignments = {
+                            ...assignments,
+                            [profile.profileId]: e.target.value
+                          };
+                          setAssignments(newAssignments);
+                          
+                          // Save to server
+                          try {
+                            await fetch('/api/departments', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(newAssignments)
+                            });
+                          } catch (error) {
+                            console.error('Error saving department:', error);
+                          }
+                        }}
                       >
                         {departments.map(dept => (
                           <MenuItem key={dept} value={dept}>

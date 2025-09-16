@@ -50,7 +50,6 @@ const menuItems = [
   { id: 'executive', label: 'Executive Dashboard', icon: <DashboardIcon /> },
   { id: 'behavioral', label: 'Behavioral Intelligence', icon: <PsychologyIcon /> },
   { id: 'department', label: 'Department Analysis', icon: <AccountTreeIcon /> },
-  { id: 'analytics', label: 'Analytics', icon: <AssessmentIcon /> },
 ];
 
 const bottomMenuItems = [

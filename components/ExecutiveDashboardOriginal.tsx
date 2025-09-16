@@ -381,7 +381,7 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
         
         const overallScore = Math.round(
           deptProfiles.reduce((sum: number, p: any) => 
-            sum + (p.scores?.activity?.value || 0), 0) / count * 100
+            sum + (p.scores?.activity?.value || 0), 0) / count
         );
 
         return {
@@ -445,12 +445,12 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
 
         const overallScore = Math.round(
           deptProfiles.reduce((sum: number, p: any) => 
-            sum + (p.scores?.sleep?.value || 0), 0) / count * 100
+            sum + (p.scores?.sleep?.value || 0), 0) / count
         );
         
         const sleepRegularity = Math.round(
           deptProfiles.reduce((sum: number, p: any) => 
-            sum + (p.subScores?.sleep?.efficiency || 0.85), 0) / count * 100
+            sum + (p.subScores?.sleep?.efficiency || 85), 0) / count
         );
         
         const duration = Math.round(
@@ -474,18 +474,18 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
           <ComposedChart data={sleepData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="department" />
-            <YAxis yAxisId="time" orientation="left" label={{ value: 'Time (hours/minutes)', angle: -90, position: 'insideLeft' }} />
-            <YAxis yAxisId="score" orientation="right" domain={[0, 100]} label={{ value: 'Score (%)', angle: 90, position: 'insideRight' }} />
+            <YAxis yAxisId="time" orientation="left" domain={[0, 10]} label={{ value: 'Sleep Duration (hours)', angle: -90, position: 'insideLeft' }} />
+            <YAxis yAxisId="debt" orientation="right" domain={[0, 200]} label={{ value: 'Sleep Debt (minutes)', angle: 90, position: 'insideRight' }} />
             <RechartsTooltip />
             <Legend />
             
             {/* Time-based metrics */}
             <Bar yAxisId="time" dataKey="duration" fill="#2196F3" name="Sleep Duration (hrs)" />
-            <Bar yAxisId="time" dataKey="sleepDebt" fill="#FF9800" name="Sleep Debt (min)" />
+            <Bar yAxisId="debt" dataKey="sleepDebt" fill="#FF9800" name="Sleep Debt (min)" />
             
-            {/* Score-based metrics - using bars instead of lines */}
-            <Bar yAxisId="score" dataKey="overallScore" fill="#4CAF50" name="Overall Sleep Score" />
-            <Bar yAxisId="score" dataKey="sleepRegularity" fill="#00BCD4" name="Sleep Regularity" />
+            {/* Score-based metrics - using lines for better visibility */}
+            <Line yAxisId="debt" type="monotone" dataKey="overallScore" stroke="#4CAF50" strokeWidth={2} name="Overall Sleep Score" />
+            <Line yAxisId="debt" type="monotone" dataKey="sleepRegularity" stroke="#00BCD4" strokeWidth={2} name="Sleep Regularity" />
           </ComposedChart>
         </ResponsiveContainer>
       );
@@ -499,7 +499,7 @@ export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshI
 
         const withSleep = deptProfiles.filter((p: any) => p.scores?.sleep?.value !== undefined).length;
         const withActivity = deptProfiles.filter((p: any) => p.scores?.activity?.value !== undefined).length;
-        const withMental = deptProfiles.filter((p: any) => p.scores?.mental_wellbeing?.value !== undefined).length;
+        const withMental = deptProfiles.filter((p: any) => p.scores?.mentalWellbeing?.value !== undefined).length;
         const withArchetypes = deptProfiles.filter((p: any) => p.archetypes && Object.keys(p.archetypes).length > 0).length;
         
         return {

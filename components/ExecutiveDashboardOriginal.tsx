@@ -172,7 +172,7 @@ function MetricCard({ title, value, subtitle, icon, color, trend, onClick, selec
 }
 
 export default function ExecutiveDashboardOriginal({ orgId = 'default', refreshInterval = 30000 }: ExecutiveOverviewProps) {
-  const { data, loading, error, refetch } = useWebhookData(refreshInterval);
+  const { data, loading, error, refetch } = useWebhookData(refreshInterval, true); // Use demo mode
   const [viewingCriteria, setViewingCriteria] = useState<ViewingCriteria>('health_scores');
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [showInsights, setShowInsights] = useState(false);

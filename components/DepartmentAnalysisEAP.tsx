@@ -32,7 +32,7 @@ const DEPARTMENT_COLORS: { [key: string]: string } = {
 };
 
 export default function DepartmentAnalysisEAP() {
-  const { data, loading, error } = useWebhookData();
+  const { data, loading, error } = useWebhookData(30000, true); // Use demo mode
   const [selectedMatrix, setSelectedMatrix] = useState<string>('heatmap');
 
   // Get profiles from webhook data

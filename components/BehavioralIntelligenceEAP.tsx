@@ -36,7 +36,7 @@ interface BehavioralIntelligenceEAPProps {
 }
 
 export default function BehavioralIntelligenceEAP({ orgId }: BehavioralIntelligenceEAPProps) {
-  const { data, loading, error } = useWebhookData();
+  const { data, loading, error } = useWebhookData(30000, true); // Use demo mode
   const [selectedArchetypeCategory, setSelectedArchetypeCategory] = useState<string>('activity');
   const [selectedArchetypeFilters, setSelectedArchetypeFilters] = useState<{ [key: string]: string }>({});
   const [drillDownData, setDrillDownData] = useState<any>(null);

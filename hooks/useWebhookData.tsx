@@ -55,14 +55,15 @@ interface WebhookData {
   };
 }
 
-export function useWebhookData(refreshInterval: number = 30000, demoMode: boolean = false) {
+export function useWebhookData(refreshInterval: number = 30000, demoMode: boolean = true) {
   const [data, setData] = useState<WebhookData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const url = demoMode ? '/api/sahha/webhook?mode=demo' : '/api/sahha/webhook';
+      // Default to demo mode
+      const url = demoMode || true ? '/api/sahha/webhook?mode=demo' : '/api/sahha/webhook';
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.statusText}`);
@@ -71,12 +72,23 @@ export function useWebhookData(refreshInterval: number = 30000, demoMode: boolea
       const result = await response.json();
       
       if (result.success) {
-        // Enhance profiles with department assignments
-        const enhancedProfiles = (result.profiles || []).map((profile: WebhookProfile, index: number) => ({
-          ...profile,
-          department: assignDepartment(profile, index),
-          name: generateName(profile.externalId, index)
-        }));
+        // Use profiles as-is from webhook, only add name generation
+        const enhancedProfiles = (result.profiles || []).map((profile: WebhookProfile, index: number) => {
+          // Normalize scores to 0-100 if they're in decimal format
+          const normalizedScores = { ...profile.scores };
+          Object.keys(normalizedScores).forEach(key => {
+            if (normalizedScores[key] && normalizedScores[key].value <= 1) {
+              normalizedScores[key].value = normalizedScores[key].value * 100;
+            }
+          });
+          
+          return {
+            ...profile,
+            scores: normalizedScores,
+            department: profile.department || 'unassigned', // Keep original department
+            name: generateName(profile.externalId, index)
+          };
+        });
         
         setData({
           profiles: enhancedProfiles,
@@ -106,18 +118,6 @@ export function useWebhookData(refreshInterval: number = 30000, demoMode: boolea
 }
 
 // Helper functions
-function assignDepartment(profile: WebhookProfile, index: number): string {
-  const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
-  
-  // Use profile characteristics to assign department
-  if (profile.externalId.includes('USr')) return 'Engineering';
-  if (profile.externalId.includes('Sample')) {
-    const hash = profile.externalId.split('-')[1]?.charCodeAt(0) || 0;
-    return departments[hash % departments.length];
-  }
-  
-  return departments[index % departments.length];
-}
 
 function generateName(externalId: string, index: number): string {
   const firstNames = ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Jamie', 'Avery'];
@@ -132,28 +132,39 @@ function generateName(externalId: string, index: number): string {
 
 // Export utility functions for calculating aggregated stats
 export function calculateDepartmentStats(profiles: WebhookProfile[]) {
-  const departments = ['Engineering', 'Sales', 'Marketing', 'HR', 'Operations', 'Finance'];
+  // Get unique departments from actual data
+  const departmentSet = new Set<string>();
+  profiles.forEach(p => {
+    departmentSet.add(p.department || 'unassigned');
+  });
+  const departments = Array.from(departmentSet).sort();
   
   return departments.map(dept => {
-    const deptProfiles = profiles.filter(p => p.department === dept);
+    const deptProfiles = profiles.filter(p => (p.department || 'unassigned') === dept);
     const avgWellbeing = deptProfiles.reduce((sum, p) => {
-      const score = p.scores?.wellbeing?.value || p.scores?.mental_wellbeing?.value || 0.5;
+      // Handle both decimal (0-1) and percentage (0-100) formats
+      let score = p.scores?.wellbeing?.value || p.scores?.mentalWellbeing?.value || 50;
+      if (score <= 1) score = score * 100; // Convert decimal to percentage
       return sum + score;
     }, 0) / (deptProfiles.length || 1);
     
     const riskProfiles = deptProfiles.filter(p => {
-      const minScore = Math.min(
-        p.scores?.wellbeing?.value || 1,
-        p.scores?.mental_wellbeing?.value || 1,
-        p.scores?.sleep?.value || 1
-      );
-      return minScore < 0.4;
+      // Normalize all scores to 0-100
+      const wellbeing = (p.scores?.wellbeing?.value || 50) <= 1 ? 
+        (p.scores?.wellbeing?.value || 0.5) * 100 : (p.scores?.wellbeing?.value || 50);
+      const mental = (p.scores?.mentalWellbeing?.value || 50) <= 1 ? 
+        (p.scores?.mentalWellbeing?.value || 0.5) * 100 : (p.scores?.mentalWellbeing?.value || 50);
+      const sleep = (p.scores?.sleep?.value || 50) <= 1 ? 
+        (p.scores?.sleep?.value || 0.5) * 100 : (p.scores?.sleep?.value || 50);
+      
+      const minScore = Math.min(wellbeing, mental, sleep);
+      return minScore < 40;
     });
     
     return {
       department: dept,
       totalEmployees: deptProfiles.length,
-      avgWellbeing: Math.round(avgWellbeing * 100),
+      avgWellbeing: Math.round(avgWellbeing),
       riskCount: riskProfiles.length,
       riskPercentage: Math.round((riskProfiles.length / (deptProfiles.length || 1)) * 100)
     };
@@ -170,15 +181,19 @@ export function calculateScoreDistribution(profiles: WebhookProfile[]) {
   };
   
   profiles.forEach(profile => {
-    const score = Math.min(
-      profile.scores?.wellbeing?.value || 1,
-      profile.scores?.mental_wellbeing?.value || 1
-    );
+    // Normalize scores to 0-100 range
+    let wellbeing = profile.scores?.wellbeing?.value || 50;
+    let mental = profile.scores?.mentalWellbeing?.value || 50;
     
-    if (score >= 0.8) distribution.excellent++;
-    else if (score >= 0.65) distribution.good++;
-    else if (score >= 0.5) distribution.fair++;
-    else if (score >= 0.3) distribution.poor++;
+    if (wellbeing <= 1) wellbeing = wellbeing * 100;
+    if (mental <= 1) mental = mental * 100;
+    
+    const score = Math.min(wellbeing, mental);
+    
+    if (score >= 80) distribution.excellent++;
+    else if (score >= 65) distribution.good++;
+    else if (score >= 50) distribution.fair++;
+    else if (score >= 30) distribution.poor++;
     else distribution.critical++;
   });
   

@@ -71,7 +71,7 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
   // State management
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dataMode, setDataMode] = useState<'webhook' | 'demo'>('webhook');
+  const [dataMode, setDataMode] = useState<'webhook' | 'demo'>('demo');
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [page, setPage] = useState(0);

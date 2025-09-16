@@ -75,7 +75,7 @@ export default function DepartmentAnalysisEAP() {
   }, [profiles]);
 
   // Define archetype types based on Sahha's actual data
-  const archetypeDefinitions = {
+  const archetypeDefinitions: { [key: string]: { type: string; values: string[]; description: string } } = {
     activity_level: {
       type: 'ordinal',
       values: ['sedentary', 'lightly_active', 'moderately_active', 'highly_active'],
@@ -175,7 +175,7 @@ export default function DepartmentAnalysisEAP() {
       
       if (profile.archetypes && typeof profile.archetypes === 'object') {
         Object.entries(profile.archetypes).forEach(([archetypeName, archetypeData]: any) => {
-          if (archetypeData && archetypeData.value && archetypeDefinitions[archetypeName]) {
+          if (archetypeData && archetypeData.value && archetypeDefinitions[archetypeName as keyof typeof archetypeDefinitions]) {
             if (!mat[deptId][archetypeName]) {
               mat[deptId][archetypeName] = {};
             }

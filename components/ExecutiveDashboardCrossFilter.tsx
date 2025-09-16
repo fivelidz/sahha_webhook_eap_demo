@@ -532,7 +532,7 @@ export default function ExecutiveDashboardCrossFilter({ orgId = 'default' }: Exe
                       <TableCell align="right">{data?.profiles?.length || 0}</TableCell>
                       <TableCell align="right">{processedData.filteredProfiles.length}</TableCell>
                       <TableCell align="right">
-                        {data?.profiles?.length > 0 
+                        {data?.profiles && data.profiles.length > 0 
                           ? Math.round((processedData.filteredProfiles.length / data.profiles.length) * 100) 
                           : 0}%
                       </TableCell>
@@ -540,7 +540,7 @@ export default function ExecutiveDashboardCrossFilter({ orgId = 'default' }: Exe
                     <TableRow>
                       <TableCell>Average Wellbeing</TableCell>
                       <TableCell align="right">
-                        {data?.profiles?.length > 0 
+                        {data?.profiles && data.profiles.length > 0 
                           ? Math.round(data.profiles.reduce((sum: number, p: any) => 
                               sum + (p.scores?.wellbeing?.value || 0), 0) / data.profiles.length * 100)
                           : 0}
@@ -552,11 +552,11 @@ export default function ExecutiveDashboardCrossFilter({ orgId = 'default' }: Exe
                           : 0}
                       </TableCell>
                       <TableCell align="right">
-                        {processedData.filteredProfiles.length > 0 
+                        {processedData.filteredProfiles.length > 0 && data?.profiles
                           ? `${Math.round(processedData.filteredProfiles.reduce((sum, p) => 
                               sum + (p.scores?.wellbeing?.value || 0), 0) / processedData.filteredProfiles.length * 100) - 
-                              Math.round(data?.profiles?.reduce((sum: number, p: any) => 
-                              sum + (p.scores?.wellbeing?.value || 0), 0) / (data?.profiles?.length || 1) * 100)}% diff`
+                              Math.round(data.profiles.reduce((sum: number, p: any) => 
+                              sum + (p.scores?.wellbeing?.value || 0), 0) / (data.profiles.length || 1) * 100)}% diff`
                           : '0% diff'}
                       </TableCell>
                     </TableRow>

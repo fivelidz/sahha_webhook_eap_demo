@@ -81,7 +81,7 @@ import {
 } from 'recharts';
 import { useProfileAggregation } from '../../hooks/useProfileAggregation';
 import { useSahhaArchetypes } from '../../hooks/useSahhaArchetypes';
-import { useSahhaProfiles } from '../../contexts/SahhaDataContext';
+import { useSahhaProfiles } from '../../../contexts/SahhaDataContext';
 
 interface ExecutiveOverviewProps {
   orgId: string;

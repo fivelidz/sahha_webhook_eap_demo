@@ -918,7 +918,18 @@ export default function ProfileManagerWebhook({ darkMode = false }: ProfileManag
                                             </Typography>
                                             <Stack direction="row" spacing={1} alignItems="center">
                                               <Typography variant="body2">
-                                                {factor.value}
+                                                {(() => {
+                                                  // Convert recovery index and wellbeing scores to percentages
+                                                  if (category === 'readiness' && factor.name === 'recovery_index') {
+                                                    const percentage = Math.round(factor.value * 100);
+                                                    return `${percentage}%`;
+                                                  }
+                                                  if (category === 'wellbeing') {
+                                                    const percentage = Math.round(factor.value * 100);
+                                                    return `${percentage}%`;
+                                                  }
+                                                  return factor.value;
+                                                })()}
                                               </Typography>
                                               {factor.goal && (
                                                 <Typography variant="caption" color="text.secondary">
